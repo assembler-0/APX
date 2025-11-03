@@ -59,3 +59,8 @@ impl Vec3 {
 // Compile-time execution
 const PAGE_SIZE: usize = 4096;
 const BUFFER_SIZE: usize = PAGE_SIZE * 4;  // computed at compile time
+
+// Entry point
+fn main() {
+    print("Hello, World!")
+}

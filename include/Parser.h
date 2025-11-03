@@ -26,6 +26,10 @@ private:
     std::unique_ptr<Statement> ParseStatement();
     std::unique_ptr<LetStatement> ParseLetStatement();
     std::unique_ptr<ReturnStatement> ParseReturnStatement();
+    std::unique_ptr<BlockStatement> ParseBlockStatement();
+    std::unique_ptr<FunctionDeclaration> ParseFunctionDeclaration();
+    std::unique_ptr<CallExpression> ParseCallExpression(std::unique_ptr<Expression> function);
+    std::unique_ptr<Expression> ParsePrefixExpression();
     std::unique_ptr<Expression> ParseExpression(int precedence);
 
     Lexer& lexer;

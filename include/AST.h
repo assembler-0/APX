@@ -47,10 +47,31 @@ public:
     std::string ToString() const override;
 };
 
-// Represents a return statement
 class ReturnStatement : public Statement {
 public:
     std::unique_ptr<Expression> returnValue;
+    std::string ToString() const override;
+};
+
+class BlockStatement : public Statement {
+public:
+    std::vector<std::unique_ptr<Statement>> statements;
+    std::string ToString() const override;
+};
+
+class FunctionDeclaration : public Statement {
+public:
+    std::unique_ptr<Identifier> name;
+    std::vector<std::unique_ptr<Identifier>> parameters;
+    std::unique_ptr<Identifier> returnType;
+    std::unique_ptr<BlockStatement> body;
+    std::string ToString() const override;
+};
+
+class CallExpression : public Expression {
+public:
+    std::unique_ptr<Identifier> function;
+    std::vector<std::unique_ptr<Expression>> arguments;
     std::string ToString() const override;
 };
 
