@@ -10,6 +10,15 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 
 set(SOURCES
     src/main.cpp
+    src/Lexer.cpp
+    src/AST.cpp
+    src/Parser.cpp
+    src/Parser.cpp
+    src/AST.cpp
+)
+
+include_directories(
+        include
 )
 
 add_executable(apxc ${SOURCES})
