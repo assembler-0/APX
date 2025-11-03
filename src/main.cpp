@@ -6,14 +6,30 @@
 #include "CodeGenerator.h"
 
 int main(int argc, char **argv) {
-    if (argc != 2) {
-        std::cerr << "Usage: apxc <filename>" << std::endl;
+    bool printAST = false;
+    std::string inputFile;
+    std::string outputFile;
+
+    // Parse command line arguments
+    for (int i = 1; i < argc; i++) {
+        std::string arg = argv[i];
+        if (arg == "-E") {
+            printAST = true;
+        } else if (arg == "-o" && i + 1 < argc) {
+            outputFile = argv[++i];
+        } else if (inputFile.empty()) {
+            inputFile = arg;
+        }
+    }
+
+    if (inputFile.empty()) {
+        std::cerr << "Usage: apxc [-E] [-o output] <filename>" << std::endl;
         return 1;
     }
 
-    std::ifstream file(argv[1]);
+    std::ifstream file(inputFile);
     if (!file.is_open()) {
-        std::cerr << "Error: could not open file " << argv[1] << std::endl;
+        std::cerr << "Error: could not open file " << inputFile << std::endl;
         return 1;
     }
 
@@ -30,21 +46,26 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    // std::cout << program->ToString() << std::endl;
+    if (printAST) {
+        std::cout << program->ToString() << std::endl;
+        return 0;
+    }
 
     CodeGenerator generator;
     std::string assembly = generator.Generate(*program);
 
-    std::string outputFilename = std::string(argv[1]) + ".asm";
-    std::ofstream outputFile(outputFilename);
-    if (!outputFile.is_open()) {
-        std::cerr << "Error: could not open output file " << outputFilename << std::endl;
+    if (outputFile.empty()) {
+        outputFile = inputFile + ".asm";
+    }
+
+    std::ofstream outFile(outputFile);
+    if (!outFile.is_open()) {
+        std::cerr << "Error: could not open output file " << outputFile << std::endl;
         return 1;
     }
 
-    outputFile << assembly;
-
-    std::cout << "Generated " << outputFilename << std::endl;
+    outFile << assembly;
+    std::cout << "Generated " << outputFile << std::endl;
 
     return 0;
 }
