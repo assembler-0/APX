@@ -1,5 +1,3 @@
-
-
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -32,7 +30,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    std::cout << program->ToString() << std::endl;
+    // std::cout << program->ToString() << std::endl;
 
     CodeGenerator generator;
     std::string assembly = generator.Generate(*program);

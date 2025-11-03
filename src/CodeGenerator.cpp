@@ -7,8 +7,13 @@ std::string CodeGenerator::Generate(const Program& program) {
     output.str("");
     output.clear();
 
+    // Add sections
+    output << "section .data" << std::endl;
+    output << std::endl;
+    output << "section .bss" << std::endl;
+    output << std::endl;
     output << "section .text" << std::endl;
-    output << "global main" << std::endl;
+    output << "global _start" << std::endl;
     output << std::endl;
 
     // First pass: Populate the functions map
@@ -22,29 +27,26 @@ std::string CodeGenerator::Generate(const Program& program) {
     // Second pass: Generate code for all function declarations
     for (const auto& stmt : program.statements) {
         if (dynamic_cast<const FunctionDeclaration*>(stmt.get())) {
-            GenerateStatement(*stmt); // This will generate the function's code
+            GenerateStatement(*stmt);
         }
     }
 
-    // Main entry point
-    output << "main:" << std::endl;
+    // Entry point
+    output << "_start:" << std::endl;
     output << "    push rbp" << std::endl;
     output << "    mov rbp, rsp" << std::endl;
-    output << "    sub rsp, 8" << std::endl; // Allocate space for one variable (for now)
 
-    symbolTable.EnterScope();
+    // Call the APX main function
+    if (functions.find("main") != functions.end()) {
+        output << "    call main" << std::endl;
+    } else {
+        output << "    mov rax, 0" << std::endl; // Default return value
+    }
 
-    // Call the 'main' function of the APX program
-    // For now, assume there's a function named 'main'
-    output << "    call main" << std::endl; // Assuming the APX main function is named main_apx
-
-    symbolTable.LeaveScope();
-
-    // Exit syscall
+    // Exit with the return value
+    output << "    mov rdi, rax" << std::endl;
     output << "    mov rax, 60" << std::endl;
-    output << "    leave" << std::endl;
     output << "    syscall" << std::endl;
-    output << "    ret" << std::endl;
 
     return output.str();
 }
@@ -55,15 +57,26 @@ void CodeGenerator::GenerateStatement(const Statement& statement) {
         GenerateExpression(*letStmt->value);
         output << "    mov [rbp" << symbolTable.Get(letStmt->name->value) << "], rax" << std::endl;
     } else if (const auto* returnStmt = dynamic_cast<const ReturnStatement*>(&statement)) {
-        GenerateExpression(*returnStmt->returnValue); // result in rax
+        GenerateExpression(*returnStmt->returnValue);
         output << "    leave" << std::endl;
         output << "    ret" << std::endl;
     } else if (const auto* funcDecl = dynamic_cast<const FunctionDeclaration*>(&statement)) {
         std::string funcName = funcDecl->name->value;
+        
         output << funcName << ":" << std::endl;
         output << "    push rbp" << std::endl;
         output << "    mov rbp, rsp" << std::endl;
-        // TODO: Allocate stack space for local variables
+        
+        // Calculate stack space needed for local variables
+        int localVarCount = 0;
+        for (const auto& stmt : funcDecl->body->statements) {
+            if (dynamic_cast<const LetStatement*>(stmt.get())) {
+                localVarCount++;
+            }
+        }
+        if (localVarCount > 0) {
+            output << "    sub rsp, " << (localVarCount * 8) << std::endl;
+        }
 
         symbolTable.EnterScope();
 
@@ -74,14 +87,23 @@ void CodeGenerator::GenerateStatement(const Statement& statement) {
             paramOffset += 8;
         }
 
+        bool hasReturn = false;
         for (const auto& stmt : funcDecl->body->statements) {
             GenerateStatement(*stmt);
+            if (dynamic_cast<const ReturnStatement*>(stmt.get())) {
+                hasReturn = true;
+                break; // Don't generate code after return
+            }
         }
 
         symbolTable.LeaveScope();
 
-        output << "    leave" << std::endl;
-        output << "    ret" << std::endl;
+        // Add default return if no explicit return
+        if (!hasReturn) {
+            output << "    mov rax, 0" << std::endl;
+            output << "    leave" << std::endl;
+            output << "    ret" << std::endl;
+        }
     } else {
         throw std::runtime_error("Unknown statement type");
     }
@@ -127,6 +149,7 @@ void CodeGenerator::GenerateExpression(const Expression& expression) {
         if (functions.find(funcName) == functions.end()) {
             throw std::runtime_error("Undefined function: " + funcName);
         }
+
         output << "    call " << funcName << std::endl;
 
         // Clean up arguments from the stack

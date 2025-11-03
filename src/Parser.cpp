@@ -57,8 +57,8 @@ std::unique_ptr<LetStatement> Parser::ParseLetStatement() {
     stmt->name = std::make_unique<Identifier>();
     stmt->name->value = currentToken.literal;
 
-    // NextToken(); // currentToken is now ColonAssign
-    // NextToken(); // currentToken is now the expression
+    NextToken(); // currentToken is now ColonAssign
+    NextToken(); // currentToken is now the expression
 
     stmt->value = ParseExpression(LOWEST);
 
@@ -95,7 +95,7 @@ std::unique_ptr<BlockStatement> Parser::ParseBlockStatement() {
         }
         NextToken();
     }
-    NextToken(); // Consume '}'
+    // Don't call NextToken() here - the '}' will be consumed by the caller
     return block;
 }
 

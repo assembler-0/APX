@@ -1,4 +1,3 @@
-
 #include "CodeGenerator.h"
 #include "Lexer.h"
 #include "Parser.h"
@@ -45,7 +44,7 @@ int compileAndRun(const std::string& apxCode) {
     }
 
     // Link using LD
-    std::string ldCommand = "ld temp.o -o temp -e main";
+    std::string ldCommand = "ld temp.o -o temp -e _start";
     if (system(ldCommand.c_str()) != 0) {
         throw std::runtime_error("LD linking failed");
     }
@@ -56,9 +55,9 @@ int compileAndRun(const std::string& apxCode) {
     // Clean up temporary files
     system(("rm " + apxFilename + " " + asmFilename + " temp.o temp").c_str());
 
-    // The exit code from system() is usually WEXITSTATUS(status) << 8
-    // So, we need to shift it right by 8 bits to get the actual exit code.
-    return WEXITSTATUS(exitCode) << 8;
+    // The exit code from system() includes the signal info
+    // Use WEXITSTATUS to extract just the exit code
+    return WEXITSTATUS(exitCode);
 }
 
 int main() {
