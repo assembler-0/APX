@@ -9,18 +9,45 @@ std::string CodeGenerator::Generate(const Program& program, const APXC_OPERATION
 
     // Add sections
     output << "section .data" << std::endl;
+    
+    // Generate global variables in data section
+    for (const auto& stmt : program.statements) {
+        if (const auto* varDecl = dynamic_cast<const VariableDeclaration*>(stmt.get())) {
+            if (varDecl->isConst || !dynamic_cast<const FunctionDeclaration*>(stmt.get())) {
+                output << "    " << varDecl->name->value << ": ";
+                if (varDecl->type && varDecl->type->value == "f32") {
+                    output << "dd ";
+                } else {
+                    output << "dq ";
+                }
+                // For now, just put placeholder values - proper constant evaluation needed
+                if (const auto* intLit = dynamic_cast<const IntegerLiteral*>(varDecl->value.get())) {
+                    output << intLit->value;
+                } else if (const auto* floatLit = dynamic_cast<const FloatLiteral*>(varDecl->value.get())) {
+                    output << floatLit->value;
+                } else {
+                    output << "0"; // Default value
+                }
+                output << std::endl;
+            }
+        }
+    }
+    
     output << std::endl;
     output << "section .bss" << std::endl;
     output << std::endl;
     output << "section .text" << std::endl;
+    output << "default rel" << std::endl;
     if (operation == APXC_OPERATION::APXC_COMPILE_W_ENTRY) {
         output << "global _start" << std::endl;
     }
     output << std::endl;
 
-    // First pass: Populate the functions map
+    // First pass: Register global variables and populate functions map
     for (const auto& stmt : program.statements) {
-        if (const auto* funcDecl = dynamic_cast<const FunctionDeclaration*>(stmt.get())) {
+        if (const auto* varDecl = dynamic_cast<const VariableDeclaration*>(stmt.get())) {
+            symbolTable.DefineGlobal(varDecl->name->value);
+        } else if (const auto* funcDecl = dynamic_cast<const FunctionDeclaration*>(stmt.get())) {
             std::string funcName = funcDecl->name->value;
             functions[funcName] = funcDecl;
         }
@@ -54,10 +81,10 @@ std::string CodeGenerator::Generate(const Program& program, const APXC_OPERATION
 }
 
 void CodeGenerator::GenerateStatement(const Statement& statement) {
-    if (const auto* letStmt = dynamic_cast<const LetStatement*>(&statement)) {
-        symbolTable.Define(letStmt->name->value);
-        GenerateExpression(*letStmt->value);
-        output << "    mov [rbp" << symbolTable.Get(letStmt->name->value) << "], rax" << std::endl;
+    if (const auto* varDecl = dynamic_cast<const VariableDeclaration*>(&statement)) {
+        symbolTable.Define(varDecl->name->value);
+        GenerateExpression(*varDecl->value);
+        output << "    mov [rbp" << symbolTable.Get(varDecl->name->value) << "], rax" << std::endl;
     } else if (const auto* returnStmt = dynamic_cast<const ReturnStatement*>(&statement)) {
         GenerateExpression(*returnStmt->returnValue);
         output << "    leave" << std::endl;
@@ -72,7 +99,7 @@ void CodeGenerator::GenerateStatement(const Statement& statement) {
         // Calculate stack space needed for local variables
         int localVarCount = 0;
         for (const auto& stmt : funcDecl->body->statements) {
-            if (dynamic_cast<const LetStatement*>(stmt.get())) {
+            if (dynamic_cast<const VariableDeclaration*>(stmt.get())) {
                 localVarCount++;
             }
         }
@@ -106,6 +133,8 @@ void CodeGenerator::GenerateStatement(const Statement& statement) {
             output << "    leave" << std::endl;
             output << "    ret" << std::endl;
         }
+    } else if (const auto* exprStmt = dynamic_cast<const ExpressionStatement*>(&statement)) {
+        GenerateExpression(*exprStmt->expression);
     } else {
         throw std::runtime_error("Unknown statement type");
     }
@@ -114,33 +143,40 @@ void CodeGenerator::GenerateStatement(const Statement& statement) {
 void CodeGenerator::GenerateExpression(const Expression& expression) {
     if (const auto* intLiteral = dynamic_cast<const IntegerLiteral*>(&expression)) {
         output << "    mov rax, " << intLiteral->value << std::endl;
+    } else if (const auto* floatLiteral = dynamic_cast<const FloatLiteral*>(&expression)) {
+        // For now, convert float to integer (proper float support needs SSE)
+        output << "    mov rax, " << static_cast<int64_t>(floatLiteral->value) << std::endl;
     } else if (const auto* ident = dynamic_cast<const Identifier*>(&expression)) {
-        int offset = symbolTable.Get(ident->value);
-        if (offset >= 0) {
-            output << "    mov rax, [rbp+" << offset << "]" << std::endl;
+        if (symbolTable.IsGlobal(ident->value)) {
+            output << "    mov rax, [" << ident->value << "]" << std::endl;
         } else {
-            output << "    mov rax, [rbp" << offset << "]" << std::endl;
+            int offset = symbolTable.Get(ident->value);
+            if (offset >= 0) {
+                output << "    mov rax, [rbp+" << offset << "]" << std::endl;
+            } else {
+                output << "    mov rax, [rbp" << offset << "]" << std::endl;
+            }
         }
     } else if (const auto* infix = dynamic_cast<const InfixExpression*>(&expression)) {
         GenerateExpression(*infix->left);
         output << "    push rax" << std::endl;
         GenerateExpression(*infix->right);
-        output << "    pop rbx" << std::endl;
+        output << "    mov rbx, rax" << std::endl;  // right operand in rbx
+        output << "    pop rax" << std::endl;       // left operand in rax
         if (infix->op == "+") {
             output << "    add rax, rbx" << std::endl;
         } else if (infix->op == "-") {
-            output << "    sub rbx, rax" << std::endl;
-            output << "    mov rax, rbx" << std::endl;
+            output << "    sub rax, rbx" << std::endl;
         } else if (infix->op == "*") {
-            output << "    mul rbx" << std::endl;
+            output << "    imul rax, rbx" << std::endl;
         } else if (infix->op == "/") {
-            output << "    xor rdx, rdx" << std::endl;
-            output << "    div rbx" << std::endl;
+            output << "    cqo" << std::endl;
+            output << "    idiv rbx" << std::endl;
         } else {
             throw std::runtime_error("Unknown infix operator: " + infix->op);
         }
     } else if (const auto* call = dynamic_cast<const CallExpression*>(&expression)) {
-        // Push arguments onto the stack in reverse order
+        // Push arguments onto the stack in correct order (last argument first)
         for (auto it = call->arguments.rbegin(); it != call->arguments.rend(); ++it) {
             GenerateExpression(**it);
             output << "    push rax" << std::endl;
@@ -157,6 +193,15 @@ void CodeGenerator::GenerateExpression(const Expression& expression) {
         // Clean up arguments from the stack
         if (!call->arguments.empty()) {
             output << "    add rsp, " << call->arguments.size() * 8 << std::endl;
+        }
+    } else if (const auto* prefix = dynamic_cast<const PrefixExpression*>(&expression)) {
+        GenerateExpression(*prefix->right);
+        if (prefix->op == "-") {
+            output << "    neg rax" << std::endl;
+        } else if (prefix->op == "!") {
+            output << "    test rax, rax" << std::endl;
+            output << "    setz al" << std::endl;
+            output << "    movzx rax, al" << std::endl;
         }
     } else {
         throw std::runtime_error("Unknown expression type");

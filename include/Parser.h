@@ -24,17 +24,28 @@ public:
 private:
     void NextToken();
     std::unique_ptr<Statement> ParseStatement();
-    std::unique_ptr<LetStatement> ParseLetStatement();
+    std::unique_ptr<VariableDeclaration> ParseVariableDeclaration();
+    std::unique_ptr<VariableDeclaration> ParseConstDeclaration();
     std::unique_ptr<ReturnStatement> ParseReturnStatement();
+    std::unique_ptr<ExpressionStatement> ParseExpressionStatement();
     std::unique_ptr<BlockStatement> ParseBlockStatement();
     std::unique_ptr<FunctionDeclaration> ParseFunctionDeclaration();
     std::unique_ptr<CallExpression> ParseCallExpression(std::unique_ptr<Expression> function);
     std::unique_ptr<Expression> ParsePrefixExpression();
     std::unique_ptr<Expression> ParseExpression(int precedence);
+    
+    // Legacy alias
+    std::unique_ptr<LetStatement> ParseLetStatement() { return ParseVariableDeclaration(); }
 
     Lexer& lexer;
     ErrorReporter& errorReporter;
     Token currentToken;
     Token peekToken;
     static std::unordered_map<TokenType, Precedence> precedences;
+    
+    // Helper methods
+    bool ExpectPeek(TokenType type);
+    bool CurrentTokenIs(TokenType type) const;
+    bool PeekTokenIs(TokenType type) const;
+    Precedence GetPrecedence(TokenType type) const;
 };

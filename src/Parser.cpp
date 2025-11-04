@@ -8,6 +8,8 @@ std::unordered_map<TokenType, Precedence> Parser::precedences = {
     {TokenType::NotEqual, Precedence::EQUALS},
     {TokenType::LessThan, Precedence::LESSGREATER},
     {TokenType::GreaterThan, Precedence::LESSGREATER},
+    {TokenType::LessThanEqual, Precedence::LESSGREATER},
+    {TokenType::GreaterThanEqual, Precedence::LESSGREATER},
     {TokenType::Plus, Precedence::SUM},
     {TokenType::Minus, Precedence::SUM},
     {TokenType::Slash, Precedence::PRODUCT},
@@ -41,29 +43,122 @@ std::unique_ptr<Program> Parser::ParseProgram() {
 }
 
 std::unique_ptr<Statement> Parser::ParseStatement() {
-    if (currentToken.type == TokenType::Identifier && peekToken.type == TokenType::ColonAssign) {
-        return ParseLetStatement();
-    } else if (currentToken.type == TokenType::Return) {
-        return ParseReturnStatement();
-    } else if (currentToken.type == TokenType::Function) {
-        return ParseFunctionDeclaration();
+    switch (currentToken.type) {
+        case TokenType::Const:
+            return ParseConstDeclaration();
+        case TokenType::Function:
+            return ParseFunctionDeclaration();
+        case TokenType::Return:
+            return ParseReturnStatement();
+        case TokenType::Identifier:
+            // Check for variable declaration patterns
+            if (peekToken.type == TokenType::ColonAssign || peekToken.type == TokenType::Colon) {
+                return ParseVariableDeclaration();
+            }
+            // Fall through to expression statement
+            [[fallthrough]];
+        default:
+            return ParseExpressionStatement();
     }
-    errorReporter.AddError("Invalid statement", 0, 0);
-    return nullptr;
 }
 
-std::unique_ptr<LetStatement> Parser::ParseLetStatement() {
-    auto stmt = std::make_unique<LetStatement>();
+std::unique_ptr<VariableDeclaration> Parser::ParseVariableDeclaration() {
+    auto stmt = std::make_unique<VariableDeclaration>();
+
+    if (currentToken.type != TokenType::Identifier) {
+        errorReporter.AddError("Expected identifier", 0, 0);
+        return nullptr;
+    }
 
     stmt->name = std::make_unique<Identifier>();
     stmt->name->value = currentToken.literal;
 
-    NextToken(); // currentToken is now ColonAssign
-    NextToken(); // currentToken is now the expression
+    NextToken();
 
+    // Handle type annotation: x: i32 = 42
+    if (currentToken.type == TokenType::Colon) {
+        NextToken();
+        if (currentToken.type != TokenType::Identifier) {
+            errorReporter.AddError("Expected type identifier", 0, 0);
+            return nullptr;
+        }
+        stmt->type = std::make_unique<Identifier>();
+        stmt->type->value = currentToken.literal;
+        NextToken();
+        
+        if (currentToken.type != TokenType::Assign) {
+            errorReporter.AddError("Expected '=' after type annotation", 0, 0);
+            return nullptr;
+        }
+    } else if (currentToken.type == TokenType::ColonAssign) {
+        // Type inference: x := 42
+        // No type annotation needed
+    } else {
+        errorReporter.AddError("Expected ':=' or ':' in variable declaration", 0, 0);
+        return nullptr;
+    }
+
+    NextToken(); // Move to expression
     stmt->value = ParseExpression(LOWEST);
 
-    if (peekToken.type == TokenType::Semicolon) {
+    if (PeekTokenIs(TokenType::Semicolon)) {
+        NextToken();
+    }
+
+    return stmt;
+}
+
+std::unique_ptr<VariableDeclaration> Parser::ParseConstDeclaration() {
+    auto stmt = std::make_unique<VariableDeclaration>();
+    stmt->isConst = true;
+
+    NextToken(); // Consume 'const'
+
+    if (currentToken.type != TokenType::Identifier) {
+        errorReporter.AddError("Expected identifier after 'const'", 0, 0);
+        return nullptr;
+    }
+
+    stmt->name = std::make_unique<Identifier>();
+    stmt->name->value = currentToken.literal;
+
+    NextToken();
+
+    if (currentToken.type != TokenType::Colon) {
+        errorReporter.AddError("Expected ':' after const identifier", 0, 0);
+        return nullptr;
+    }
+
+    NextToken();
+    if (currentToken.type != TokenType::Identifier) {
+        errorReporter.AddError("Expected type identifier", 0, 0);
+        return nullptr;
+    }
+
+    stmt->type = std::make_unique<Identifier>();
+    stmt->type->value = currentToken.literal;
+
+    NextToken();
+    if (currentToken.type != TokenType::Assign) {
+        errorReporter.AddError("Expected '=' in const declaration", 0, 0);
+        return nullptr;
+    }
+
+    NextToken();
+    stmt->value = ParseExpression(LOWEST);
+
+    if (PeekTokenIs(TokenType::Semicolon)) {
+        NextToken();
+    }
+
+    return stmt;
+}
+
+std::unique_ptr<ExpressionStatement> Parser::ParseExpressionStatement() {
+    auto stmt = std::make_unique<ExpressionStatement>();
+    stmt->expression = ParseExpression(LOWEST);
+
+    if (PeekTokenIs(TokenType::Semicolon)) {
         NextToken();
     }
 
@@ -202,35 +297,60 @@ std::unique_ptr<CallExpression> Parser::ParseCallExpression(std::unique_ptr<Expr
 }
 
 std::unique_ptr<Expression> Parser::ParsePrefixExpression() {
-    if (currentToken.type == TokenType::Integer) {
-        auto literal = std::make_unique<IntegerLiteral>();
-        literal->value = std::stoll(currentToken.literal);
-        return literal;
-    } else if (currentToken.type == TokenType::Identifier) {
-        auto ident = std::make_unique<Identifier>();
-        ident->value = currentToken.literal;
-        return ident;
+    switch (currentToken.type) {
+        case TokenType::Integer: {
+            auto literal = std::make_unique<IntegerLiteral>();
+            literal->value = std::stoll(currentToken.literal);
+            return literal;
+        }
+        case TokenType::Float: {
+            auto literal = std::make_unique<FloatLiteral>();
+            literal->value = std::stod(currentToken.literal);
+            return literal;
+        }
+        case TokenType::Identifier: {
+            auto ident = std::make_unique<Identifier>();
+            ident->value = currentToken.literal;
+            return ident;
+        }
+        case TokenType::Bang:
+        case TokenType::Minus: {
+            auto prefix = std::make_unique<PrefixExpression>();
+            prefix->op = currentToken.literal;
+            NextToken();
+            prefix->right = ParseExpression(PREFIX);
+            return prefix;
+        }
+        case TokenType::LParen: {
+            NextToken();
+            auto exp = ParseExpression(LOWEST);
+            if (!ExpectPeek(TokenType::RParen)) {
+                return nullptr;
+            }
+            return exp;
+        }
+        default:
+            errorReporter.AddError("No prefix parse function for " + currentToken.literal, 0, 0);
+            return nullptr;
     }
-    errorReporter.AddError("Invalid prefix expression", 0, 0);
-    return nullptr; // Error
 }
 
 std::unique_ptr<Expression> Parser::ParseExpression(int precedence) {
     std::unique_ptr<Expression> leftExp = ParsePrefixExpression();
 
-    while (peekToken.type != TokenType::Semicolon && precedence < precedences[peekToken.type]) {
+    while (peekToken.type != TokenType::Semicolon && precedence < GetPrecedence(peekToken.type)) {
         // If it's a call expression
         if (peekToken.type == TokenType::LParen) {
             // Don't consume '(', ParseCallExpression will do it
             leftExp = ParseCallExpression(std::move(leftExp));
         }
         // If it's an infix expression
-        else if (precedences.count(peekToken.type)) { // Check if it's an infix operator
+        else if (GetPrecedence(peekToken.type) != LOWEST) { // Check if it's an infix operator
             NextToken(); // Consume the operator
             auto infix = std::make_unique<InfixExpression>();
             infix->left = std::move(leftExp);
             infix->op = currentToken.literal;
-            int currentPrecedence = precedences[currentToken.type];
+            int currentPrecedence = GetPrecedence(currentToken.type);
             NextToken(); // Consume the right-hand side of the infix expression
             infix->right = ParseExpression(currentPrecedence);
             leftExp = std::move(infix);
@@ -240,4 +360,30 @@ std::unique_ptr<Expression> Parser::ParseExpression(int precedence) {
     }
 
     return leftExp;
+}
+
+// Helper methods
+bool Parser::ExpectPeek(TokenType type) {
+    if (PeekTokenIs(type)) {
+        NextToken();
+        return true;
+    }
+    errorReporter.AddError("Expected " + TokenTypeToString(type) + ", got " + TokenTypeToString(peekToken.type), 0, 0);
+    return false;
+}
+
+bool Parser::CurrentTokenIs(TokenType type) const {
+    return currentToken.type == type;
+}
+
+bool Parser::PeekTokenIs(TokenType type) const {
+    return peekToken.type == type;
+}
+
+Precedence Parser::GetPrecedence(TokenType type) const {
+    auto it = precedences.find(type);
+    if (it != precedences.end()) {
+        return it->second;
+    }
+    return LOWEST;
 }

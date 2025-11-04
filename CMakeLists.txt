@@ -26,3 +26,8 @@ add_library(apxlib STATIC ${SOURCES})
 
 add_executable(apxc src/main.cpp)
 target_link_libraries(apxc apxlib)
+
+add_custom_target(run
+        COMMAND apxc ${CMAKE_CURRENT_BINARY_DIR}/main.apx
+        VERBATIM
+)

@@ -13,6 +13,14 @@ void SymbolTable::Define(const std::string& name) {
     nextOffset -= 8;
 }
 
+void SymbolTable::DefineGlobal(const std::string& name) {
+    if (scopes[0].count(name)) {
+        throw std::runtime_error("Redefinition of global variable: " + name);
+    }
+    scopes[0][name] = 0; // Global variables use direct addressing
+    globals[name] = true;
+}
+
 void SymbolTable::DefineParameter(const std::string& name, int offset) {
     if (scopes.back().count(name)) {
         throw std::runtime_error("Redefinition of parameter: " + name);
@@ -27,6 +35,10 @@ int SymbolTable::Get(const std::string& name) {
         }
     }
     throw std::runtime_error("Undefined variable: " + name);
+}
+
+bool SymbolTable::IsGlobal(const std::string& name) {
+    return globals.count(name) > 0;
 }
 
 void SymbolTable::EnterScope() {

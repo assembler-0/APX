@@ -17,9 +17,25 @@ std::string IntegerLiteral::ToString() const {
     return std::to_string(value);
 }
 
-std::string LetStatement::ToString() const {
+std::string FloatLiteral::ToString() const {
+    return std::to_string(value);
+}
+
+std::string VariableDeclaration::ToString() const {
     std::stringstream ss;
-    ss << "let " << name->ToString() << " = " << value->ToString() << ";";
+    if (isConst) {
+        ss << "const ";
+    }
+    ss << name->ToString();
+    if (type) {
+        ss << ": " << type->ToString();
+    }
+    if (isConst) {
+        ss << " = ";
+    } else {
+        ss << " := ";
+    }
+    ss << value->ToString() << ";";
     return ss.str();
 }
 
@@ -66,5 +82,15 @@ std::string CallExpression::ToString() const {
 std::string InfixExpression::ToString() const {
     std::stringstream ss;
     ss << "(" << left->ToString() << " " << op << " " << right->ToString() << ")";
+    return ss.str();
+}
+
+std::string ExpressionStatement::ToString() const {
+    return expression->ToString() + ";";
+}
+
+std::string PrefixExpression::ToString() const {
+    std::stringstream ss;
+    ss << "(" << op << right->ToString() << ")";
     return ss.str();
 }

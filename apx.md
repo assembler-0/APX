@@ -3,6 +3,7 @@ x := 42              // infer type
 y: u64 = 100         // explicit
 
 // Functions - clean signature
+
 fn calculate(base: i32, power: i32) -> i32 {
     result := 1
     for i in 0..power {

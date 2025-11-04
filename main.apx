@@ -1,0 +1,50 @@
+// Comprehensive test of improved APX compiler features
+
+// Constants with explicit types
+const MAX_SIZE: i32 = 1024;
+const PI: f32 = 3.14159;
+
+// Global variables with type inference
+counter := 0;
+initialized_global := 42;
+
+// Global variables with explicit types
+buffer_size: i32 = 256;
+temperature: f32 = 98.6;
+
+fn add(a: i32, b: i32) -> i32 {
+    result := a + b;
+    return result;
+}
+
+fn calculate_area(radius: f32) -> f32 {
+    // Local variable with type inference
+    area := PI * radius * radius;
+    return area;
+}
+
+fn test_expressions() -> i32 {
+    // Test prefix expressions
+    negative := -42;
+    positive := -negative;
+    
+    // Test infix expressions
+    sum := positive + initialized_global;
+    product := sum * buffer_size;
+    
+    return product;
+}
+
+fn main() -> i32 {
+    // Test function calls
+    sum := add(counter, initialized_global);
+    
+    // Test global variable access
+    total := sum + buffer_size;
+    
+    // Test expression evaluation
+    result := test_expressions();
+
+
+    return result;
+}
