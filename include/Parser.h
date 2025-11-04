@@ -1,9 +1,9 @@
-
 #pragma once
 
 #include <unordered_map>
 #include "Lexer.h"
 #include "AST.h"
+#include "ErrorReporter.h"
 
 enum Precedence {
     LOWEST,
@@ -17,7 +17,7 @@ enum Precedence {
 
 class Parser {
 public:
-    explicit Parser(Lexer& lexer);
+    explicit Parser(Lexer& lexer, ErrorReporter& errorReporter);
 
     std::unique_ptr<Program> ParseProgram();
 
@@ -33,6 +33,7 @@ private:
     std::unique_ptr<Expression> ParseExpression(int precedence);
 
     Lexer& lexer;
+    ErrorReporter& errorReporter;
     Token currentToken;
     Token peekToken;
     static std::unordered_map<TokenType, Precedence> precedences;

@@ -4,26 +4,27 @@
 #include "Lexer.h"
 #include "Parser.h"
 #include "CodeGenerator.h"
+#include "ArgParser.h"
+
 
 int main(int argc, char **argv) {
-    bool printAST = false;
-    std::string inputFile;
-    std::string outputFile;
+    ArgParser arg_parser(argc, argv);
+    auto [operation,
+        inputFile,
+        outputFile,
+        showHelp,
+        hasError,
+        errorMessage
+        ] = arg_parser.Parse();
 
-    // Parse command line arguments
-    for (int i = 1; i < argc; i++) {
-        std::string arg = argv[i];
-        if (arg == "-E") {
-            printAST = true;
-        } else if (arg == "-o" && i + 1 < argc) {
-            outputFile = argv[++i];
-        } else if (inputFile.empty()) {
-            inputFile = arg;
-        }
+    if (showHelp) {
+        ArgParser::PrintUsage(argv[0]);
+        return 0;
     }
 
-    if (inputFile.empty()) {
-        std::cerr << "Usage: apxc [-E] [-o output] <filename>" << std::endl;
+    if (hasError) {
+        std::cerr << "Error: " << errorMessage << std::endl;
+        ArgParser::PrintUsage(argv[0]);
         return 1;
     }
 
@@ -38,21 +39,22 @@ int main(int argc, char **argv) {
     std::string code = buffer.str();
 
     Lexer lexer(code);
-    Parser parser(lexer);
+    ErrorReporter errorReporter;
+    Parser parser(lexer, errorReporter);
     auto program = parser.ParseProgram();
 
-    if (!program) {
-        std::cerr << "Error: failed to parse program" << std::endl;
+    if (errorReporter.HasErrors()) {
+        errorReporter.PrintErrors();
         return 1;
     }
 
-    if (printAST) {
+    if (operation == APXC_OPERATION::APXC_PREPROCESS) {
         std::cout << program->ToString() << std::endl;
         return 0;
     }
 
     CodeGenerator generator;
-    std::string assembly = generator.Generate(*program);
+    std::string assembly = generator.Generate(*program, operation);
 
     if (outputFile.empty()) {
         outputFile = inputFile + ".asm";
@@ -65,7 +67,7 @@ int main(int argc, char **argv) {
     }
 
     outFile << assembly;
-    std::cout << "Generated " << outputFile << std::endl;
+    std::cout << "Compiled:  " << outputFile << std::endl;
 
     return 0;
 }

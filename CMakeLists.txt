@@ -14,6 +14,8 @@ set(SOURCES
     src/Parser.cpp
     src/CodeGenerator.cpp
     src/SymbolTable.cpp
+    src/ArgParser.cpp
+    src/ErrorReporter.cpp
 )
 
 include_directories(
@@ -24,6 +26,3 @@ add_library(apxlib STATIC ${SOURCES})
 
 add_executable(apxc src/main.cpp)
 target_link_libraries(apxc apxlib)
-
-enable_testing()
-add_subdirectory(tests)

@@ -3,7 +3,7 @@
 #include <iostream>
 #include <stdexcept>
 
-std::string CodeGenerator::Generate(const Program& program) {
+std::string CodeGenerator::Generate(const Program& program, const APXC_OPERATION operation) {
     output.str("");
     output.clear();
 
@@ -13,7 +13,9 @@ std::string CodeGenerator::Generate(const Program& program) {
     output << "section .bss" << std::endl;
     output << std::endl;
     output << "section .text" << std::endl;
-    output << "global _start" << std::endl;
+    if (operation == APXC_OPERATION::APXC_COMPILE_W_ENTRY) {
+        output << "global _start" << std::endl;
+    }
     output << std::endl;
 
     // First pass: Populate the functions map
@@ -30,24 +32,24 @@ std::string CodeGenerator::Generate(const Program& program) {
             GenerateStatement(*stmt);
         }
     }
+    if (operation == APXC_OPERATION::APXC_COMPILE_W_ENTRY) {
+        // Entry point
+        output << "_start:" << std::endl;
+        output << "    push rbp" << std::endl;
+        output << "    mov rbp, rsp" << std::endl;
 
-    // Entry point
-    output << "_start:" << std::endl;
-    output << "    push rbp" << std::endl;
-    output << "    mov rbp, rsp" << std::endl;
+        // Call the APX main function
+        if (functions.find("main") != functions.end()) {
+            output << "    call main" << std::endl;
+        } else {
+            output << "    mov rax, 0" << std::endl; // Default return value
+        }
 
-    // Call the APX main function
-    if (functions.find("main") != functions.end()) {
-        output << "    call main" << std::endl;
-    } else {
-        output << "    mov rax, 0" << std::endl; // Default return value
+        // Exit with the return value
+        output << "    mov rdi, rax" << std::endl;
+        output << "    mov rax, 60" << std::endl;
+        output << "    syscall" << std::endl;
     }
-
-    // Exit with the return value
-    output << "    mov rdi, rax" << std::endl;
-    output << "    mov rax, 60" << std::endl;
-    output << "    syscall" << std::endl;
-
     return output.str();
 }
 

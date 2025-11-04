@@ -15,7 +15,7 @@ std::unordered_map<TokenType, Precedence> Parser::precedences = {
     {TokenType::LParen, Precedence::CALL},
 };
 
-Parser::Parser(Lexer& lexer) : lexer(lexer) {
+Parser::Parser(Lexer& lexer, ErrorReporter& errorReporter) : lexer(lexer), errorReporter(errorReporter) {
     // Initialize currentToken and peekToken
     NextToken();
     NextToken();
@@ -48,6 +48,7 @@ std::unique_ptr<Statement> Parser::ParseStatement() {
     } else if (currentToken.type == TokenType::Function) {
         return ParseFunctionDeclaration();
     }
+    errorReporter.AddError("Invalid statement", 0, 0);
     return nullptr;
 }
 
@@ -105,6 +106,7 @@ std::unique_ptr<FunctionDeclaration> Parser::ParseFunctionDeclaration() {
     NextToken(); // Consume 'fn'
 
     if (currentToken.type != TokenType::Identifier) {
+        errorReporter.AddError("Expected function name", 0, 0);
         return nullptr; // Error
     }
     func->name = std::make_unique<Identifier>();
@@ -113,6 +115,7 @@ std::unique_ptr<FunctionDeclaration> Parser::ParseFunctionDeclaration() {
     NextToken(); // Consume function name
 
     if (currentToken.type != TokenType::LParen) {
+        errorReporter.AddError("Expected '(' after function name", 0, 0);
         return nullptr; // Error
     }
 
@@ -120,6 +123,7 @@ std::unique_ptr<FunctionDeclaration> Parser::ParseFunctionDeclaration() {
     NextToken(); // Consume '('
     while (currentToken.type != TokenType::RParen && currentToken.type != TokenType::Eof) {
         if (currentToken.type != TokenType::Identifier) {
+            errorReporter.AddError("Expected parameter name", 0, 0);
             return nullptr; // Error
         }
         auto param = std::make_unique<Identifier>();
@@ -130,6 +134,7 @@ std::unique_ptr<FunctionDeclaration> Parser::ParseFunctionDeclaration() {
         if (currentToken.type == TokenType::Colon) {
             NextToken(); // consume ':'
             if (currentToken.type != TokenType::Identifier) {
+                errorReporter.AddError("Expected type identifier", 0, 0);
                 return nullptr; // expected type identifier
             }
             NextToken(); // consume type identifier
@@ -140,6 +145,7 @@ std::unique_ptr<FunctionDeclaration> Parser::ParseFunctionDeclaration() {
     }
 
     if (currentToken.type != TokenType::RParen) {
+        errorReporter.AddError("Expected ')' after parameters", 0, 0);
         return nullptr; // Error
     }
 
@@ -148,6 +154,7 @@ std::unique_ptr<FunctionDeclaration> Parser::ParseFunctionDeclaration() {
     if (currentToken.type == TokenType::Arrow) {
         NextToken(); // Consume '->'
         if (currentToken.type != TokenType::Identifier) {
+            errorReporter.AddError("Expected return type", 0, 0);
             return nullptr; // Error (return type)
         }
         func->returnType = std::make_unique<Identifier>();
@@ -160,10 +167,14 @@ std::unique_ptr<FunctionDeclaration> Parser::ParseFunctionDeclaration() {
     }
 
     if (currentToken.type != TokenType::LBrace) {
+        errorReporter.AddError("Expected '{' before function body", 0, 0);
         return nullptr; // Error
     }
 
     func->body = ParseBlockStatement();
+    if (!func->body) {
+        return nullptr;
+    }
 
     return func;
 }
@@ -200,6 +211,7 @@ std::unique_ptr<Expression> Parser::ParsePrefixExpression() {
         ident->value = currentToken.literal;
         return ident;
     }
+    errorReporter.AddError("Invalid prefix expression", 0, 0);
     return nullptr; // Error
 }
 
