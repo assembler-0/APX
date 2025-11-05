@@ -94,3 +94,24 @@ std::string PrefixExpression::ToString() const {
     ss << "(" << op << right->ToString() << ")";
     return ss.str();
 }
+
+std::string IfStatement::ToString() const {
+    std::stringstream ss;
+    ss << "if (" << condition->ToString() << ") {" << consequence->ToString() << "}";
+    if (alternative) {
+        ss << " else {" << alternative->ToString() << "}";
+    }
+    return ss.str();
+}
+
+std::string WhileStatement::ToString() const {
+    std::stringstream ss;
+    ss << "while (" << condition->ToString() << ") {" << body->ToString() << "}";
+    return ss.str();
+}
+
+std::string AssignmentStatement::ToString() const {
+    std::stringstream ss;
+    ss << name->ToString() << " = " << value->ToString() << ";";
+    return ss.str();
+}

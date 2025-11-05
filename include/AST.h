@@ -109,3 +109,28 @@ public:
     std::unique_ptr<Expression> right;
     std::string ToString() const override;
 };
+
+// Represents an if statement
+class IfStatement : public Statement {
+public:
+    std::unique_ptr<Expression> condition;
+    std::unique_ptr<BlockStatement> consequence;
+    std::unique_ptr<BlockStatement> alternative; // Optional else block
+    std::string ToString() const override;
+};
+
+// Represents a while loop
+class WhileStatement : public Statement {
+public:
+    std::unique_ptr<Expression> condition;
+    std::unique_ptr<BlockStatement> body;
+    std::string ToString() const override;
+};
+
+// Represents an assignment statement (e.g., x = 5)
+class AssignmentStatement : public Statement {
+public:
+    std::unique_ptr<Identifier> name;
+    std::unique_ptr<Expression> value;
+    std::string ToString() const override;
+};

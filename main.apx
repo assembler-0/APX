@@ -35,6 +35,24 @@ fn test_expressions() -> i32 {
     return product;
 }
 
+fn test_conditionals(x: i32) -> i32 {
+    // Test if without parentheses
+    if x > 50 {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+fn test_loops() -> i32 {
+    // Test while without parentheses
+    counter := 0;
+    while counter < 3 {
+        counter = counter + 1;
+    }
+    return counter;
+}
+
 fn main() -> i32 {
     // Test function calls
     sum := add(counter, initialized_global);
@@ -44,7 +62,10 @@ fn main() -> i32 {
     
     // Test expression evaluation
     result := test_expressions();
-
-
-    return result;
+    
+    // Test conditionals and loops
+    cond_result := test_conditionals(75);
+    loop_result := test_loops();
+    
+    return loop_result;
 }

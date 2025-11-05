@@ -48,12 +48,20 @@ std::unique_ptr<Statement> Parser::ParseStatement() {
             return ParseConstDeclaration();
         case TokenType::Function:
             return ParseFunctionDeclaration();
+        case TokenType::If:
+            return ParseIfStatement();
+        case TokenType::While:
+            return ParseWhileStatement();
         case TokenType::Return:
             return ParseReturnStatement();
         case TokenType::Identifier:
             // Check for variable declaration patterns
             if (peekToken.type == TokenType::ColonAssign || peekToken.type == TokenType::Colon) {
                 return ParseVariableDeclaration();
+            }
+            // Check for assignment
+            if (peekToken.type == TokenType::Assign) {
+                return ParseAssignmentStatement();
             }
             // Fall through to expression statement
             [[fallthrough]];
@@ -191,7 +199,12 @@ std::unique_ptr<BlockStatement> Parser::ParseBlockStatement() {
         }
         NextToken();
     }
-    // Don't call NextToken() here - the '}' will be consumed by the caller
+    
+    if (currentToken.type != TokenType::RBrace) {
+        errorReporter.AddError("Expected '}' to close block", 0, 0);
+        return nullptr;
+    }
+    
     return block;
 }
 
@@ -386,4 +399,101 @@ Precedence Parser::GetPrecedence(TokenType type) const {
         return it->second;
     }
     return LOWEST;
+}
+
+std::unique_ptr<IfStatement> Parser::ParseIfStatement() {
+    auto ifStmt = std::make_unique<IfStatement>();
+
+    NextToken(); // Consume 'if'
+
+    // Check if parentheses are used
+    bool hasParens = currentToken.type == TokenType::LParen;
+    if (hasParens) {
+        NextToken(); // Consume '('
+    }
+
+    ifStmt->condition = ParseExpression(LOWEST);
+
+    if (hasParens && !ExpectPeek(TokenType::RParen)) {
+        return nullptr;
+    }
+
+    if (!ExpectPeek(TokenType::LBrace)) {
+        return nullptr;
+    }
+
+    ifStmt->consequence = ParseBlockStatement();
+    if (!ifStmt->consequence) {
+        return nullptr;
+    }
+
+    // Check for optional else clause
+    if (PeekTokenIs(TokenType::Else)) {
+        NextToken(); // Consume 'else'
+        
+        if (!ExpectPeek(TokenType::LBrace)) {
+            return nullptr;
+        }
+        
+        ifStmt->alternative = ParseBlockStatement();
+        if (!ifStmt->alternative) {
+            return nullptr;
+        }
+    }
+
+    return ifStmt;
+}
+
+std::unique_ptr<WhileStatement> Parser::ParseWhileStatement() {
+    auto whileStmt = std::make_unique<WhileStatement>();
+
+    NextToken(); // Consume 'while'
+
+    // Check if parentheses are used
+    bool hasParens = currentToken.type == TokenType::LParen;
+    if (hasParens) {
+        NextToken(); // Consume '('
+    }
+
+    whileStmt->condition = ParseExpression(LOWEST);
+
+    if (hasParens && !ExpectPeek(TokenType::RParen)) {
+        return nullptr;
+    }
+
+    if (!ExpectPeek(TokenType::LBrace)) {
+        return nullptr;
+    }
+
+    whileStmt->body = ParseBlockStatement();
+    if (!whileStmt->body) {
+        return nullptr;
+    }
+
+    return whileStmt;
+}
+
+std::unique_ptr<AssignmentStatement> Parser::ParseAssignmentStatement() {
+    auto assignStmt = std::make_unique<AssignmentStatement>();
+
+    if (currentToken.type != TokenType::Identifier) {
+        errorReporter.AddError("Expected identifier in assignment", 0, 0);
+        return nullptr;
+    }
+
+    assignStmt->name = std::make_unique<Identifier>();
+    assignStmt->name->value = currentToken.literal;
+
+    if (!ExpectPeek(TokenType::Assign)) {
+        return nullptr;
+    }
+
+    NextToken(); // Move to expression
+    assignStmt->value = ParseExpression(LOWEST);
+
+    if (PeekTokenIs(TokenType::Semicolon)) {
+        NextToken();
+    }
+
+    return assignStmt;
 }

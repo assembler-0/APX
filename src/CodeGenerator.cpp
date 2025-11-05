@@ -135,6 +135,60 @@ void CodeGenerator::GenerateStatement(const Statement& statement) {
         }
     } else if (const auto* exprStmt = dynamic_cast<const ExpressionStatement*>(&statement)) {
         GenerateExpression(*exprStmt->expression);
+    } else if (const auto* ifStmt = dynamic_cast<const IfStatement*>(&statement)) {
+        static int labelCounter = 0;
+        int currentLabel = labelCounter++;
+        
+        // Generate condition
+        GenerateExpression(*ifStmt->condition);
+        output << "    test rax, rax" << std::endl;
+        output << "    jz .else" << currentLabel << std::endl;
+        
+        // Generate consequence block
+        for (const auto& stmt : ifStmt->consequence->statements) {
+            GenerateStatement(*stmt);
+        }
+        output << "    jmp .endif" << currentLabel << std::endl;
+        
+        // Generate else block (if exists)
+        output << ".else" << currentLabel << ":" << std::endl;
+        if (ifStmt->alternative) {
+            for (const auto& stmt : ifStmt->alternative->statements) {
+                GenerateStatement(*stmt);
+            }
+        }
+        
+        output << ".endif" << currentLabel << ":" << std::endl;
+    } else if (const auto* whileStmt = dynamic_cast<const WhileStatement*>(&statement)) {
+        static int loopCounter = 0;
+        int currentLoop = loopCounter++;
+        
+        output << ".loop" << currentLoop << ":" << std::endl;
+        
+        // Generate condition
+        GenerateExpression(*whileStmt->condition);
+        output << "    test rax, rax" << std::endl;
+        output << "    jz .endloop" << currentLoop << std::endl;
+        
+        // Generate loop body
+        for (const auto& stmt : whileStmt->body->statements) {
+            GenerateStatement(*stmt);
+        }
+        
+        output << "    jmp .loop" << currentLoop << std::endl;
+        output << ".endloop" << currentLoop << ":" << std::endl;
+    } else if (const auto* assignStmt = dynamic_cast<const AssignmentStatement*>(&statement)) {
+        GenerateExpression(*assignStmt->value);
+        if (symbolTable.IsGlobal(assignStmt->name->value)) {
+            output << "    mov [" << assignStmt->name->value << "], rax" << std::endl;
+        } else {
+            int offset = symbolTable.Get(assignStmt->name->value);
+            if (offset >= 0) {
+                output << "    mov [rbp+" << offset << "], rax" << std::endl;
+            } else {
+                output << "    mov [rbp" << offset << "], rax" << std::endl;
+            }
+        }
     } else {
         throw std::runtime_error("Unknown statement type");
     }
@@ -172,6 +226,30 @@ void CodeGenerator::GenerateExpression(const Expression& expression) {
         } else if (infix->op == "/") {
             output << "    cqo" << std::endl;
             output << "    idiv rbx" << std::endl;
+        } else if (infix->op == "==") {
+            output << "    cmp rax, rbx" << std::endl;
+            output << "    sete al" << std::endl;
+            output << "    movzx rax, al" << std::endl;
+        } else if (infix->op == "!=") {
+            output << "    cmp rax, rbx" << std::endl;
+            output << "    setne al" << std::endl;
+            output << "    movzx rax, al" << std::endl;
+        } else if (infix->op == "<") {
+            output << "    cmp rax, rbx" << std::endl;
+            output << "    setl al" << std::endl;
+            output << "    movzx rax, al" << std::endl;
+        } else if (infix->op == ">") {
+            output << "    cmp rax, rbx" << std::endl;
+            output << "    setg al" << std::endl;
+            output << "    movzx rax, al" << std::endl;
+        } else if (infix->op == "<=") {
+            output << "    cmp rax, rbx" << std::endl;
+            output << "    setle al" << std::endl;
+            output << "    movzx rax, al" << std::endl;
+        } else if (infix->op == ">=") {
+            output << "    cmp rax, rbx" << std::endl;
+            output << "    setge al" << std::endl;
+            output << "    movzx rax, al" << std::endl;
         } else {
             throw std::runtime_error("Unknown infix operator: " + infix->op);
         }

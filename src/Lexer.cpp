@@ -37,6 +37,7 @@ std::string TokenTypeToString(const TokenType type) {
         case TokenType::RBrace: return "RBrace";
         case TokenType::Function: return "Function";
         case TokenType::If: return "If";
+        case TokenType::Else: return "Else";
         case TokenType::While: return "While";
         case TokenType::Return: return "Return";
         case TokenType::Struct: return "Struct";
@@ -69,6 +70,7 @@ TokenType Lexer::LookupIdent(const std::string& ident) {
     static const std::unordered_map<std::string, TokenType> keywords = {
         {"fn", TokenType::Function},
         {"if", TokenType::If},
+        {"else", TokenType::Else},
         {"while", TokenType::While},
         {"return", TokenType::Return},
         {"struct", TokenType::Struct},

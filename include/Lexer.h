@@ -49,6 +49,7 @@ enum class TokenType {
     // Keywords
     Function,
     If,
+    Else,
     While,
     Return,
     Struct,
