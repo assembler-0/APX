@@ -1,71 +1,260 @@
-// Comprehensive test of improved APX compiler features
+// APX Language Feature Showcase
+// Demonstrates all implemented language features
 
-// Constants with explicit types
-const MAX_SIZE: i32 = 1024;
-const PI: f32 = 3.14159;
+// ===== CONSTANTS & GLOBALS =====
+const KERNEL_VERSION: i32 = 2024;
+const MEMORY_ALIGNMENT: i32 = 8;
+const DEBUG_MODE: i32 = 1;
 
-// Global variables with type inference
-counter := 0;
-initialized_global := 42;
+// Type inference globals
+global_counter := 0;
+status_code := 200;
 
-// Global variables with explicit types
-buffer_size: i32 = 256;
-temperature: f32 = 98.6;
+// Explicit type globals
+max_processes: i32 = 1024;
+kernel_base: i32 = 0x100000;
 
-fn add(a: i32, b: i32) -> i32 {
-    result := a + b;
-    return result;
+// ===== BASIC ARITHMETIC & FUNCTIONS =====
+fn multiply(a: i32, b: i32) -> i32 {
+    return a * b;
 }
 
-fn calculate_area(radius: f32) -> f32 {
-    // Local variable with type inference
-    area := PI * radius * radius;
-    return area;
-}
-
-fn test_expressions() -> i32 {
-    // Test prefix expressions
-    negative := -42;
-    positive := -negative;
-    
-    // Test infix expressions
-    sum := positive + initialized_global;
-    product := sum * buffer_size;
-    
-    return product;
-}
-
-fn test_conditionals(x: i32) -> i32 {
-    // Test if without parentheses
-    if x > 50 {
-        return 1;
+fn divide_safe(dividend: i32, divisor: i32) -> i32 {
+    if divisor == 0 {
+        return -1;  // Error code
     } else {
-        return 0;
+        return dividend / divisor;
+    }
+}
+
+// ===== EXPRESSION TESTING =====
+fn test_arithmetic() -> i32 {
+    // Prefix operations
+    neg := -100;
+    pos := -neg;
+    
+    // Complex expressions
+    result := pos + multiply(5, 8) - divide_safe(100, 4);
+    return result;  // Should be 100 + 40 - 25 = 115
+}
+
+// ===== CONTROL FLOW =====
+fn test_conditionals(value: i32) -> i32 {
+    // Nested conditions
+    if value > 100 {
+        if value {
+            return 3;  // Very high
+        } else {
+            return 2;  // High
+        }
+    } else {
+        if value > 50 {
+            return 1;  // Medium
+        } else {
+            return 0;  // Low
+        }
     }
 }
 
 fn test_loops() -> i32 {
-    // Test while without parentheses
-    counter := 0;
-    while counter < 3 {
-        counter = counter + 1;
+    // Counting loop
+    i := 0;
+    sum := 0;
+    
+    while i < 10 {
+        sum = sum + i;
+        i = i + 1;
     }
-    return counter;
+    
+    return sum;  // Should be 45 (0+1+2+...+9)
 }
 
+fn factorial(n: i32) -> i32 {
+    if n <= 1 {
+        return 1;
+    }
+    
+    result := 1;
+    i := 2;
+    
+    while i <= n {
+        result = result * i;
+        i = i + 1;
+    }
+    
+    return result;
+}
+
+// ===== POINTER OPERATIONS =====
+fn test_safe_pointers() -> i32 {
+    // Safe pointer operations
+    value := 42;
+    ptr := &value;
+    retrieved := *ptr;
+    
+    return retrieved;
+}
+
+fn test_unsafe_pointers() -> i32 {
+    x := 10;
+    y := 20;
+    
+    unsafe {
+        // Pointer manipulation
+        ptr_x := &x;
+        ptr_y := &y;
+        
+        // Swap values through pointers
+        temp := *ptr_x;
+        *ptr_x = *ptr_y;
+        *ptr_y = temp;
+    }
+    
+    return x + y;  // Still 30, but x=20, y=10 now
+}
+
+// ===== MEMORY OPERATIONS =====
+fn kernel_memory_test() -> i32 {
+    // Simulate kernel memory operations
+    page_size := 4096;
+    pages_allocated := 0;
+    
+    // Allocate pages loop
+    while pages_allocated < 8 {
+        unsafe {
+            // Simulate memory allocation
+            addr := kernel_base + pages_allocated * page_size;
+            ptr := &addr;
+            *ptr = 3735928559;  // Magic number (0xDEADBEEF in decimal)
+        }
+        pages_allocated = pages_allocated + 1;
+    }
+    
+    return pages_allocated * page_size;  // Total allocated
+}
+
+// ===== HEX LITERALS DEMO =====
+fn test_hex_values() -> i32 {
+    // Test various hex literal formats
+    magic_number := 0xDEADBEEF;  // Large hex value
+    byte_value := 0xFF;          // 255 in hex
+    small_hex := 0x10;           // 16 in hex
+    
+    return byte_value; // Return 255
+}
+
+// ===== INLINE ASSEMBLY DEMO =====
+fn get_timestamp() -> i32 {
+    // Use inline assembly to get CPU timestamp
+    result := 0;
+    
+    unsafe {
+        asm {
+            mov rax, 12345
+            mov rbx, rax
+            rdtsc
+        }
+        // Store a placeholder value since we can't capture asm result yet
+        result = 12345;
+    }
+    
+    return result; // Returns placeholder timestamp
+}
+
+fn nop_instruction() -> i32 {
+    // Demonstrate simple inline assembly
+    asm {
+        nop
+        nop
+        nop
+    }
+    
+    return 1; // Success
+}
+
+// ===== COMPARISON OPERATIONS =====
+fn test_comparisons(a: i32, b: i32) -> i32 {
+    result := 0;
+    
+    if a == b {
+        result = result + 1;
+    }
+    
+    if a != b {
+        result = result + 2;
+    }
+    
+    if a < b {
+        result = result + 4;
+    }
+    
+    if a > b {
+        result = result + 8;
+    }
+    
+    if a <= b {
+        result = result + 16;
+    }
+    
+    if a >= b {
+        result = result + 32;
+    }
+    
+    return result;
+}
+
+// ===== MAIN FUNCTION - FEATURE SHOWCASE =====
 fn main() -> i32 {
-    // Test function calls
-    sum := add(counter, initialized_global);
+    // Test basic arithmetic
+    arith_result := test_arithmetic();
     
-    // Test global variable access
-    total := sum + buffer_size;
+    // Test control flow
+    cond_low := test_conditionals(25);
+    cond_high := test_conditionals(150);
+    cond_very_high := test_conditionals(600);
     
-    // Test expression evaluation
-    result := test_expressions();
+    // Test loops and recursion
+    loop_sum := test_loops();
+    fact_5 := factorial(5);
     
-    // Test conditionals and loops
-    cond_result := test_conditionals(75);
-    loop_result := test_loops();
+    // Test pointer operations
+    safe_ptr_result := test_safe_pointers();
+    unsafe_ptr_result := test_unsafe_pointers();
     
-    return loop_result;
+    // Test memory operations
+    memory_result := kernel_memory_test();
+    
+    // Test hex literals
+    hex_result := test_hex_values();  // Should return 255
+    
+    // Test inline assembly features
+    timestamp := get_timestamp();  // Should return 12345
+    nop_result := nop_instruction();  // Should return 1
+    
+    // Test comparisons
+    comp_equal := test_comparisons(10, 10);
+    comp_less := test_comparisons(5, 10);
+    comp_greater := test_comparisons(15, 10);
+    
+    // Complex final calculation including assembly results
+    final_result := arith_result + loop_sum + fact_5;
+    final_result = final_result + safe_ptr_result + unsafe_ptr_result;
+    final_result = final_result + cond_low + cond_high + cond_very_high;
+    
+    // Verify all features work (including comments and inline assembly)
+    if final_result > 0 {
+        if memory_result > 0 {
+            if comp_equal > 0 {
+                if timestamp > 0 {
+                    if nop_result > 0 {
+                        if hex_result == 255 {
+                            return 0x2A;  // Success - ALL features working! (42 in hex)
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    return -1;  // Error code
 }

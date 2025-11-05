@@ -35,7 +35,7 @@ enum class TokenType {
     AsteriskAssign,
     SlashAssign,
     Range,
-
+    Ampersand,
 
     // Delimiters
     Comma,
@@ -57,6 +57,10 @@ enum class TokenType {
     Asm,
     Const,
     Protocol,
+    Unsafe,
+    Mut,
+    Ref,
+    Deref,
 };
 
 std::string TokenTypeToString(TokenType type);
@@ -70,6 +74,8 @@ class Lexer {
 public:
     explicit Lexer(std::string input);
     Token NextToken();
+    size_t GetPosition() const { return position; }
+    const std::string& GetInput() const { return input; }
 
 private:
     void NextChar();

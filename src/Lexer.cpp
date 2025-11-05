@@ -28,6 +28,7 @@ std::string TokenTypeToString(const TokenType type) {
         case TokenType::AsteriskAssign: return "AsteriskAssign";
         case TokenType::SlashAssign: return "SlashAssign";
         case TokenType::Range: return "Range";
+        case TokenType::Ampersand: return "Ampersand";
         case TokenType::Comma: return "Comma";
         case TokenType::Semicolon: return "Semicolon";
         case TokenType::Colon: return "Colon";
@@ -45,6 +46,10 @@ std::string TokenTypeToString(const TokenType type) {
         case TokenType::Asm: return "Asm";
         case TokenType::Const: return "Const";
         case TokenType::Protocol: return "Protocol";
+        case TokenType::Unsafe: return "Unsafe";
+        case TokenType::Mut: return "Mut";
+        case TokenType::Ref: return "Ref";
+        case TokenType::Deref: return "Deref";
         default: return "Unknown";
     }
 }
@@ -78,6 +83,8 @@ TokenType Lexer::LookupIdent(const std::string& ident) {
         {"asm", TokenType::Asm},
         {"const", TokenType::Const},
         {"protocol", TokenType::Protocol},
+        {"unsafe", TokenType::Unsafe},
+        {"mut", TokenType::Mut},
     };
 
     if (const auto it = keywords.find(ident); it != keywords.end()) {
@@ -201,6 +208,7 @@ Token Lexer::NextToken() {
     case ')': tok = {TokenType::RParen, ")"}; break;
     case '{': tok = {TokenType::LBrace, "{"}; break;
     case '}': tok = {TokenType::RBrace, "}"}; break;
+    case '&': tok = {TokenType::Ampersand, "&"}; break;
     case ',': tok = {TokenType::Comma, ","}; break;
     case ';': tok = {TokenType::Semicolon, ";"}; break;
     case 0: tok = {TokenType::Eof, ""}; break;
@@ -215,14 +223,33 @@ Token Lexer::NextToken() {
             tok.literal = ident;
             return tok; // Early return to avoid NextChar() at the end
         }
-        if (isdigit(ch)) {
+        if (isdigit(ch) || (ch == '0' && (input[readPosition] == 'x' || input[readPosition] == 'X'))) {
             std::string num;
             bool is_float = false;
-            while (isdigit(ch) || (ch == '.' && input[readPosition] != '.')) {
-                if (ch == '.') is_float = true;
-                num += ch;
+            bool is_hex = false;
+            
+            // Check for hex prefix
+            if (ch == '0' && (input[readPosition] == 'x' || input[readPosition] == 'X')) {
+                is_hex = true;
+                num += ch; // '0'
                 NextChar();
+                num += ch; // 'x' or 'X'
+                NextChar();
+                
+                // Parse hex digits
+                while (isdigit(ch) || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F')) {
+                    num += ch;
+                    NextChar();
+                }
+            } else {
+                // Parse decimal number
+                while (isdigit(ch) || (ch == '.' && input[readPosition] != '.')) {
+                    if (ch == '.') is_float = true;
+                    num += ch;
+                    NextChar();
+                }
             }
+            
             tok.type = is_float ? TokenType::Float : TokenType::Integer;
             tok.literal = num;
             return tok; // Early return

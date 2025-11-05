@@ -115,3 +115,33 @@ std::string AssignmentStatement::ToString() const {
     ss << name->ToString() << " = " << value->ToString() << ";";
     return ss.str();
 }
+
+std::string UnsafeStatement::ToString() const {
+    std::stringstream ss;
+    ss << "unsafe {" << body->ToString() << "}";
+    return ss.str();
+}
+
+std::string DereferenceExpression::ToString() const {
+    std::stringstream ss;
+    ss << "(*" << operand->ToString() << ")";
+    return ss.str();
+}
+
+std::string AddressOfExpression::ToString() const {
+    std::stringstream ss;
+    ss << "(&" << operand->ToString() << ")";
+    return ss.str();
+}
+
+std::string DereferenceAssignmentStatement::ToString() const {
+    std::stringstream ss;
+    ss << "*" << pointer->ToString() << " = " << value->ToString() << ";";
+    return ss.str();
+}
+
+std::string InlineAssemblyStatement::ToString() const {
+    std::stringstream ss;
+    ss << "asm {" << assembly_code << "}";
+    return ss.str();
+}

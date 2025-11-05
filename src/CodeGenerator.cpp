@@ -2,6 +2,7 @@
 #include "CodeGenerator.h"
 #include <iostream>
 #include <stdexcept>
+#include <functional>
 
 std::string CodeGenerator::Generate(const Program& program, const APXC_OPERATION operation) {
     output.str("");
@@ -98,11 +99,16 @@ void CodeGenerator::GenerateStatement(const Statement& statement) {
         
         // Calculate stack space needed for local variables
         int localVarCount = 0;
-        for (const auto& stmt : funcDecl->body->statements) {
-            if (dynamic_cast<const VariableDeclaration*>(stmt.get())) {
-                localVarCount++;
+        std::function<void(const BlockStatement*)> countVars = [&](const BlockStatement* block) {
+            for (const auto& stmt : block->statements) {
+                if (dynamic_cast<const VariableDeclaration*>(stmt.get())) {
+                    localVarCount++;
+                } else if (const auto* unsafeStmt = dynamic_cast<const UnsafeStatement*>(stmt.get())) {
+                    countVars(unsafeStmt->body.get());
+                }
             }
-        }
+        };
+        countVars(funcDecl->body.get());
         if (localVarCount > 0) {
             output << "    sub rsp, " << (localVarCount * 8) << std::endl;
         }
@@ -187,6 +193,38 @@ void CodeGenerator::GenerateStatement(const Statement& statement) {
                 output << "    mov [rbp+" << offset << "], rax" << std::endl;
             } else {
                 output << "    mov [rbp" << offset << "], rax" << std::endl;
+            }
+        }
+    } else if (const auto* unsafeStmt = dynamic_cast<const UnsafeStatement*>(&statement)) {
+        // Generate code for unsafe block - just execute the body
+        for (const auto& stmt : unsafeStmt->body->statements) {
+            GenerateStatement(*stmt);
+        }
+    } else if (const auto* derefAssign = dynamic_cast<const DereferenceAssignmentStatement*>(&statement)) {
+        // Generate value first
+        GenerateExpression(*derefAssign->value);
+        output << "    push rax" << std::endl; // Save value
+        
+        // Generate pointer address
+        GenerateExpression(*derefAssign->pointer);
+        output << "    mov rbx, rax" << std::endl; // Pointer in rbx
+        output << "    pop rax" << std::endl;     // Value in rax
+        
+        // Store value at pointer location
+        output << "    mov [rbx], rax" << std::endl;
+    } else if (const auto* asmStmt = dynamic_cast<const InlineAssemblyStatement*>(&statement)) {
+        // Insert raw assembly code directly
+        std::string asm_code = asmStmt->assembly_code;
+        if (!asm_code.empty()) {
+            // Split by lines and add proper indentation
+            std::stringstream ss(asm_code);
+            std::string line;
+            while (std::getline(ss, line)) {
+                // Trim whitespace and add indentation
+                size_t start = line.find_first_not_of(" \t");
+                if (start != std::string::npos) {
+                    output << "    " << line.substr(start) << std::endl;
+                }
             }
         }
     } else {
@@ -280,6 +318,26 @@ void CodeGenerator::GenerateExpression(const Expression& expression) {
             output << "    test rax, rax" << std::endl;
             output << "    setz al" << std::endl;
             output << "    movzx rax, al" << std::endl;
+        }
+    } else if (const auto* deref = dynamic_cast<const DereferenceExpression*>(&expression)) {
+        // Generate address, then dereference
+        GenerateExpression(*deref->operand);
+        output << "    mov rax, [rax]" << std::endl;
+    } else if (const auto* addrOf = dynamic_cast<const AddressOfExpression*>(&expression)) {
+        // Generate address of variable
+        if (const auto* ident = dynamic_cast<const Identifier*>(addrOf->operand.get())) {
+            if (symbolTable.IsGlobal(ident->value)) {
+                output << "    lea rax, [" << ident->value << "]" << std::endl;
+            } else {
+                int offset = symbolTable.Get(ident->value);
+                if (offset >= 0) {
+                    output << "    lea rax, [rbp+" << offset << "]" << std::endl;
+                } else {
+                    output << "    lea rax, [rbp" << offset << "]" << std::endl;
+                }
+            }
+        } else {
+            throw std::runtime_error("Address-of only supported for identifiers");
         }
     } else {
         throw std::runtime_error("Unknown expression type");

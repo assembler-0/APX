@@ -52,8 +52,21 @@ std::unique_ptr<Statement> Parser::ParseStatement() {
             return ParseIfStatement();
         case TokenType::While:
             return ParseWhileStatement();
+        case TokenType::Unsafe:
+            return ParseUnsafeStatement();
+        case TokenType::Asm:
+            return ParseInlineAssemblyStatement();
         case TokenType::Return:
             return ParseReturnStatement();
+        case TokenType::Asterisk:
+            // Check if this is a dereferenced assignment
+            if (peekToken.type == TokenType::Identifier) {
+                // Look ahead to see if there's an assignment after the identifier
+                // For now, assume it's a dereferenced assignment
+                return ParseDereferenceAssignmentStatement();
+            }
+            // Fall through to expression statement
+            [[fallthrough]];
         case TokenType::Identifier:
             // Check for variable declaration patterns
             if (peekToken.type == TokenType::ColonAssign || peekToken.type == TokenType::Colon) {
@@ -313,7 +326,11 @@ std::unique_ptr<Expression> Parser::ParsePrefixExpression() {
     switch (currentToken.type) {
         case TokenType::Integer: {
             auto literal = std::make_unique<IntegerLiteral>();
-            literal->value = std::stoll(currentToken.literal);
+            if (currentToken.literal.substr(0, 2) == "0x" || currentToken.literal.substr(0, 2) == "0X") {
+                literal->value = std::stoll(currentToken.literal, nullptr, 16);
+            } else {
+                literal->value = std::stoll(currentToken.literal);
+            }
             return literal;
         }
         case TokenType::Float: {
@@ -333,6 +350,18 @@ std::unique_ptr<Expression> Parser::ParsePrefixExpression() {
             NextToken();
             prefix->right = ParseExpression(PREFIX);
             return prefix;
+        }
+        case TokenType::Asterisk: {
+            auto deref = std::make_unique<DereferenceExpression>();
+            NextToken();
+            deref->operand = ParseExpression(PREFIX);
+            return deref;
+        }
+        case TokenType::Ampersand: {
+            auto addrOf = std::make_unique<AddressOfExpression>();
+            NextToken();
+            addrOf->operand = ParseExpression(PREFIX);
+            return addrOf;
         }
         case TokenType::LParen: {
             NextToken();
@@ -496,4 +525,83 @@ std::unique_ptr<AssignmentStatement> Parser::ParseAssignmentStatement() {
     }
 
     return assignStmt;
+}
+
+std::unique_ptr<UnsafeStatement> Parser::ParseUnsafeStatement() {
+    auto unsafeStmt = std::make_unique<UnsafeStatement>();
+
+    NextToken(); // Consume 'unsafe'
+
+    if (currentToken.type != TokenType::LBrace) {
+        errorReporter.AddError("Expected '{' after 'unsafe'", 0, 0);
+        return nullptr;
+    }
+
+    unsafeStmt->body = ParseBlockStatement();
+    if (!unsafeStmt->body) {
+        return nullptr;
+    }
+
+    return unsafeStmt;
+}
+
+std::unique_ptr<DereferenceAssignmentStatement> Parser::ParseDereferenceAssignmentStatement() {
+    auto derefAssign = std::make_unique<DereferenceAssignmentStatement>();
+
+    NextToken(); // Consume '*'
+    derefAssign->pointer = ParseExpression(PREFIX);
+
+    if (!ExpectPeek(TokenType::Assign)) {
+        return nullptr;
+    }
+
+    NextToken(); // Move to expression
+    derefAssign->value = ParseExpression(LOWEST);
+
+    if (PeekTokenIs(TokenType::Semicolon)) {
+        NextToken();
+    }
+
+    return derefAssign;
+}
+
+std::unique_ptr<InlineAssemblyStatement> Parser::ParseInlineAssemblyStatement() {
+    auto asmStmt = std::make_unique<InlineAssemblyStatement>();
+
+    NextToken(); // Consume 'asm'
+
+    if (currentToken.type != TokenType::LBrace) {
+        errorReporter.AddError("Expected '{' after 'asm'", 0, 0);
+        return nullptr;
+    }
+
+    NextToken(); // Consume '{'
+    
+    // Collect all content between braces as raw assembly
+    std::string assembly;
+    
+    while (currentToken.type != TokenType::RBrace && currentToken.type != TokenType::Eof) {
+        // Add current token to assembly string
+        assembly += currentToken.literal;
+        NextToken();
+        
+        // Add appropriate spacing
+        if (currentToken.type != TokenType::RBrace && currentToken.type != TokenType::Eof) {
+            // Check if we need a newline (simple heuristic)
+            if (currentToken.type == TokenType::Identifier && 
+                (assembly.back() != ' ' && assembly.back() != '\n')) {
+                assembly += "\n";
+            } else if (currentToken.type != TokenType::Comma) {
+                assembly += " ";
+            }
+        }
+    }
+    
+    if (currentToken.type != TokenType::RBrace) {
+        errorReporter.AddError("Expected '}' to close asm block", 0, 0);
+        return nullptr;
+    }
+    
+    asmStmt->assembly_code = assembly;
+    return asmStmt;
 }

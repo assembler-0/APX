@@ -134,3 +134,39 @@ public:
     std::unique_ptr<Expression> value;
     std::string ToString() const override;
 };
+
+// Represents an unsafe block
+class UnsafeStatement : public Statement {
+public:
+    std::unique_ptr<BlockStatement> body;
+    std::string ToString() const override;
+};
+
+// Represents pointer dereference (*ptr)
+class DereferenceExpression : public Expression {
+public:
+    std::unique_ptr<Expression> operand;
+    std::string ToString() const override;
+};
+
+// Represents address-of (&var)
+class AddressOfExpression : public Expression {
+public:
+    std::unique_ptr<Expression> operand;
+    std::string ToString() const override;
+};
+
+// Represents dereferenced assignment (*ptr = value)
+class DereferenceAssignmentStatement : public Statement {
+public:
+    std::unique_ptr<Expression> pointer;
+    std::unique_ptr<Expression> value;
+    std::string ToString() const override;
+};
+
+// Represents inline assembly block
+class InlineAssemblyStatement : public Statement {
+public:
+    std::string assembly_code;
+    std::string ToString() const override;
+};

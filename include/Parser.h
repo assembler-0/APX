@@ -33,6 +33,9 @@ private:
     std::unique_ptr<IfStatement> ParseIfStatement();
     std::unique_ptr<WhileStatement> ParseWhileStatement();
     std::unique_ptr<AssignmentStatement> ParseAssignmentStatement();
+    std::unique_ptr<UnsafeStatement> ParseUnsafeStatement();
+    std::unique_ptr<DereferenceAssignmentStatement> ParseDereferenceAssignmentStatement();
+    std::unique_ptr<InlineAssemblyStatement> ParseInlineAssemblyStatement();
     std::unique_ptr<CallExpression> ParseCallExpression(std::unique_ptr<Expression> function);
     std::unique_ptr<Expression> ParsePrefixExpression();
     std::unique_ptr<Expression> ParseExpression(int precedence);
