@@ -1,5 +1,6 @@
 #include "ErrorReporter.h"
 #include <iostream>
+#include "Logger.h"
 
 void ErrorReporter::AddError(const std::string& message, const int line, const int column) {
     errors.push_back({message, line, column});
@@ -11,6 +12,6 @@ bool ErrorReporter::HasErrors() const {
 
 void ErrorReporter::PrintErrors() const {
     for (const auto&[message, line, column] : errors) {
-        std::cerr << "Error at line " << line << ", column " << column << ": " << message << std::endl;
+        out::error("Exception at line {}, column {}: {}", line, column, message);
     }
 }

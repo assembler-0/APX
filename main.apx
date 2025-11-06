@@ -139,7 +139,6 @@ fn test_hex_values() -> i32 {
     magic_number := 0xDEADBEEF;  // Large hex value
     byte_value := 0xFF;          // 255 in hex
     small_hex := 0x10;           // 16 in hex
-    
     return byte_value; // Return 255
 }
 

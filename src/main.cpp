@@ -5,7 +5,9 @@
 #include "Parser.h"
 #include "CodeGenerator.h"
 #include "ArgParser.h"
+#include "Logger.h"
 
+std::mutex g_output_mutex;
 
 int main(int argc, char **argv) {
     ArgParser arg_parser(argc, argv);
@@ -23,14 +25,14 @@ int main(int argc, char **argv) {
     }
 
     if (hasError) {
-        std::cerr << "Error: " << errorMessage << std::endl;
+        out::error(errorMessage);
         ArgParser::PrintUsage(argv[0]);
         return 1;
     }
 
     std::ifstream file(inputFile);
     if (!file.is_open()) {
-        std::cerr << "Error: could not open file " << inputFile << std::endl;
+        out::error("Could not open input file: {}", inputFile);
         return 1;
     }
 
@@ -62,12 +64,12 @@ int main(int argc, char **argv) {
 
     std::ofstream outFile(outputFile);
     if (!outFile.is_open()) {
-        std::cerr << "Error: could not open output file " << outputFile << std::endl;
+        out::error("Could not open output file: {}", outputFile);
         return 1;
     }
 
     outFile << assembly;
-    std::cout << "Compiled:  " << outputFile << std::endl;
+    out::success("Compiled: {} from: {}", outputFile, inputFile);
 
     return 0;
 }

@@ -576,32 +576,36 @@ std::unique_ptr<InlineAssemblyStatement> Parser::ParseInlineAssemblyStatement() 
     }
 
     NextToken(); // Consume '{'
-    
-    // Collect all content between braces as raw assembly
+
+    // Collect raw assembly between braces. Use '!' to terminate an instruction line.
     std::string assembly;
-    
+    bool atLineStart = true;
+
     while (currentToken.type != TokenType::RBrace && currentToken.type != TokenType::Eof) {
-        // Add current token to assembly string
-        assembly += currentToken.literal;
-        NextToken();
-        
-        // Add appropriate spacing
-        if (currentToken.type != TokenType::RBrace && currentToken.type != TokenType::Eof) {
-            // Check if we need a newline (simple heuristic)
-            if (currentToken.type == TokenType::Identifier && 
-                (assembly.back() != ' ' && assembly.back() != '\n')) {
-                assembly += "\n";
-            } else if (currentToken.type != TokenType::Comma) {
-                assembly += " ";
+        if (currentToken.type == TokenType::Bang) {
+            // '!' explicitly ends the current instruction line
+            if (!assembly.empty() && assembly.back() != '\n') assembly += '\n';
+            atLineStart = true;
+        } else if (currentToken.type == TokenType::Comma) {
+            assembly += ", ";
+            atLineStart = false;
+        } else {
+            // Insert a space between tokens when appropriate
+            if (!atLineStart && !assembly.empty()) {
+                char last = assembly.back();
+                if (last != ' ' && last != '\n') assembly += ' ';
             }
+            assembly += currentToken.literal;
+            atLineStart = false;
         }
+        NextToken();
     }
-    
+
     if (currentToken.type != TokenType::RBrace) {
         errorReporter.AddError("Expected '}' to close asm block", 0, 0);
         return nullptr;
     }
-    
+
     asmStmt->assembly_code = assembly;
     return asmStmt;
 }

@@ -79,8 +79,4 @@ void ArgParser::PrintUsage(const std::string& programName) {
     std::cout << "  -c              Compile without entry point\n";
     std::cout << "  -o <file>       Specify output file\n";
     std::cout << "  -h, --help      Show this help message\n\n";
-    std::cout << "Examples:\n";
-    std::cout << "  " << programName << " main.apx\n";
-    std::cout << "  " << programName << " -o output.asm main.apx\n";
-    std::cout << "  " << programName << " -E main.apx\n";
 }
