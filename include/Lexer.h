@@ -64,6 +64,9 @@ enum class TokenType {
     Mut,
     Ref,
     Deref,
+    
+    // Special content
+    RawAssembly,
 };
 
 std::string TokenTypeToString(TokenType type);
@@ -77,8 +80,11 @@ class Lexer {
 public:
     explicit Lexer(std::string input);
     Token NextToken();
+    Token ReadRawAssemblyToken(); // For inline assembly
     size_t GetPosition() const { return position; }
     const std::string& GetInput() const { return input; }
+    int GetLine() const { return line; }
+    int GetColumn() const { return column; }
 
 private:
     void NextChar();
@@ -88,4 +94,6 @@ private:
     size_t position;
     size_t readPosition;
     char ch;
+    int line;
+    int column;
 };

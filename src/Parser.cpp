@@ -122,7 +122,7 @@ std::unique_ptr<VariableDeclaration> Parser::ParseVariableDeclaration() {
     auto stmt = std::make_unique<VariableDeclaration>();
 
     if (currentToken.type != TokenType::Identifier) {
-        errorReporter.AddError("Expected identifier", 0, 0);
+        errorReporter.AddError("Expected identifier", lexer.GetLine(), lexer.GetColumn());
         return nullptr;
     }
 
@@ -135,7 +135,7 @@ std::unique_ptr<VariableDeclaration> Parser::ParseVariableDeclaration() {
     if (currentToken.type == TokenType::Colon) {
         NextToken();
         if (currentToken.type != TokenType::Identifier) {
-            errorReporter.AddError("Expected type identifier", 0, 0);
+            errorReporter.AddError("Expected type identifier", lexer.GetLine(), lexer.GetColumn());
             return nullptr;
         }
         stmt->type = std::make_unique<Identifier>();
@@ -143,14 +143,14 @@ std::unique_ptr<VariableDeclaration> Parser::ParseVariableDeclaration() {
         NextToken();
         
         if (currentToken.type != TokenType::Assign) {
-            errorReporter.AddError("Expected '=' after type annotation", 0, 0);
+            errorReporter.AddError("Expected '=' after type annotation", lexer.GetLine(), lexer.GetColumn());
             return nullptr;
         }
     } else if (currentToken.type == TokenType::ColonAssign) {
         // Type inference: x := 42
         // No type annotation needed
     } else {
-        errorReporter.AddError("Expected ':=' or ':' in variable declaration", 0, 0);
+        errorReporter.AddError("Expected ':=' or ':' in variable declaration", lexer.GetLine(), lexer.GetColumn());
         return nullptr;
     }
 
@@ -407,7 +407,7 @@ std::unique_ptr<Expression> Parser::ParsePrefixExpression() {
             return exp;
         }
         default:
-            errorReporter.AddError("No prefix parse function for " + currentToken.literal, 0, 0);
+            errorReporter.AddError("No prefix parse function for " + currentToken.literal, lexer.GetLine(), lexer.GetColumn());
             return nullptr;
     }
 }

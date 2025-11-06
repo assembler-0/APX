@@ -58,7 +58,7 @@ std::string TokenTypeToString(const TokenType type) {
 }
 
 Lexer::Lexer(std::string input)
-    : input(std::move(input)), position(0), readPosition(0), ch(0) {
+    : input(std::move(input)), position(0), readPosition(0), ch(0), line(1), column(1) {
     NextChar();
 }
 
@@ -68,6 +68,14 @@ void Lexer::NextChar() {
     } else {
         ch = input[readPosition];
     }
+    
+    if (ch == '\n') {
+        line++;
+        column = 1;
+    } else {
+        column++;
+    }
+    
     position = readPosition;
     readPosition++;
 }
