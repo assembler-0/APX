@@ -43,44 +43,79 @@ std::unique_ptr<Program> Parser::ParseProgram() {
 }
 
 std::unique_ptr<Statement> Parser::ParseStatement() {
+    // Parse attributes first if present
+    std::vector<std::unique_ptr<Attribute>> attributes;
+    if (currentToken.type == TokenType::Hash) {
+        attributes = ParseAttributes();
+    }
+    
+    std::unique_ptr<Statement> stmt;
     switch (currentToken.type) {
         case TokenType::Const:
-            return ParseConstDeclaration();
+            stmt = ParseConstDeclaration();
+            break;
         case TokenType::Function:
-            return ParseFunctionDeclaration();
+            stmt = ParseFunctionDeclaration();
+            break;
         case TokenType::If:
-            return ParseIfStatement();
+            stmt = ParseIfStatement();
+            break;
         case TokenType::While:
-            return ParseWhileStatement();
+            stmt = ParseWhileStatement();
+            break;
         case TokenType::Unsafe:
-            return ParseUnsafeStatement();
+            stmt = ParseUnsafeStatement();
+            break;
         case TokenType::Asm:
-            return ParseInlineAssemblyStatement();
+            stmt = ParseInlineAssemblyStatement();
+            break;
         case TokenType::Return:
-            return ParseReturnStatement();
+            stmt = ParseReturnStatement();
+            break;
         case TokenType::Asterisk:
             // Check if this is a dereferenced assignment
             if (peekToken.type == TokenType::Identifier) {
                 // Look ahead to see if there's an assignment after the identifier
                 // For now, assume it's a dereferenced assignment
-                return ParseDereferenceAssignmentStatement();
+                stmt = ParseDereferenceAssignmentStatement();
+            } else {
+                stmt = ParseExpressionStatement();
             }
-            // Fall through to expression statement
-            [[fallthrough]];
+            break;
         case TokenType::Identifier:
             // Check for variable declaration patterns
             if (peekToken.type == TokenType::ColonAssign || peekToken.type == TokenType::Colon) {
-                return ParseVariableDeclaration();
+                stmt = ParseVariableDeclaration();
             }
             // Check for assignment
-            if (peekToken.type == TokenType::Assign) {
-                return ParseAssignmentStatement();
+            else if (peekToken.type == TokenType::Assign) {
+                stmt = ParseAssignmentStatement();
+            } else {
+                stmt = ParseExpressionStatement();
             }
-            // Fall through to expression statement
-            [[fallthrough]];
+            break;
         default:
-            return ParseExpressionStatement();
+            stmt = ParseExpressionStatement();
+            break;
     }
+    
+    // Apply attributes to the statement
+    if (stmt && !attributes.empty()) {
+        stmt->attributes = std::move(attributes);
+        
+        // Process specific attributes for variable declarations
+        if (auto* varDecl = dynamic_cast<VariableDeclaration*>(stmt.get())) {
+            for (const auto& attr : stmt->attributes) {
+                if (attr->name == "global") {
+                    varDecl->isGlobal = true;
+                } else if (attr->name == "align" && !attr->arguments.empty()) {
+                    varDecl->alignment = std::stoi(attr->arguments[0]);
+                }
+            }
+        }
+    }
+    
+    return stmt;
 }
 
 std::unique_ptr<VariableDeclaration> Parser::ParseVariableDeclaration() {
@@ -608,4 +643,78 @@ std::unique_ptr<InlineAssemblyStatement> Parser::ParseInlineAssemblyStatement() 
 
     asmStmt->assembly_code = assembly;
     return asmStmt;
+}
+
+std::vector<std::unique_ptr<Attribute>> Parser::ParseAttributes() {
+    std::vector<std::unique_ptr<Attribute>> attributes;
+    
+    while (currentToken.type == TokenType::Hash) {
+        auto attr = ParseAttribute();
+        if (attr) {
+            attributes.push_back(std::move(attr));
+        }
+    }
+    
+    return attributes;
+}
+
+std::unique_ptr<Attribute> Parser::ParseAttribute() {
+    auto attr = std::make_unique<Attribute>();
+    
+    if (currentToken.type != TokenType::Hash) {
+        errorReporter.AddError("Expected '#' at start of attribute", 0, 0);
+        return nullptr;
+    }
+    
+    NextToken(); // Consume '#'
+    
+    if (currentToken.type != TokenType::LBracket) {
+        errorReporter.AddError("Expected '[' after '#'", 0, 0);
+        return nullptr;
+    }
+    
+    NextToken(); // Consume '['
+    
+    if (currentToken.type != TokenType::Identifier) {
+        errorReporter.AddError("Expected attribute name", 0, 0);
+        return nullptr;
+    }
+    
+    attr->name = currentToken.literal;
+    NextToken(); // Consume attribute name
+    
+    // Parse optional arguments
+    if (currentToken.type == TokenType::LParen) {
+        NextToken(); // Consume '('
+        
+        while (currentToken.type != TokenType::RParen && currentToken.type != TokenType::Eof) {
+            if (currentToken.type == TokenType::Identifier || currentToken.type == TokenType::Integer) {
+                attr->arguments.push_back(currentToken.literal);
+                NextToken();
+                
+                if (currentToken.type == TokenType::Comma) {
+                    NextToken(); // Consume ','
+                }
+            } else {
+                errorReporter.AddError("Expected argument in attribute", 0, 0);
+                return nullptr;
+            }
+        }
+        
+        if (currentToken.type != TokenType::RParen) {
+            errorReporter.AddError("Expected ')' after attribute arguments", 0, 0);
+            return nullptr;
+        }
+        
+        NextToken(); // Consume ')'
+    }
+    
+    if (currentToken.type != TokenType::RBracket) {
+        errorReporter.AddError("Expected ']' to close attribute", 0, 0);
+        return nullptr;
+    }
+    
+    NextToken(); // Consume ']'
+    
+    return attr;
 }

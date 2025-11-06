@@ -15,10 +15,12 @@ max_processes: i32 = 1024;
 kernel_base: i32 = 0x100000;
 
 // ===== BASIC ARITHMETIC & FUNCTIONS =====
+#[global]
 fn multiply(a: i32, b: i32) -> i32 {
     return a * b;
 }
 
+#[global]
 fn divide_safe(dividend: i32, divisor: i32) -> i32 {
     if divisor == 0 {
         return -1;  // Error code
@@ -28,6 +30,7 @@ fn divide_safe(dividend: i32, divisor: i32) -> i32 {
 }
 
 // ===== EXPRESSION TESTING =====
+#[global]
 fn test_arithmetic() -> i32 {
     // Prefix operations
     neg := -100;
@@ -39,6 +42,7 @@ fn test_arithmetic() -> i32 {
 }
 
 // ===== CONTROL FLOW =====
+#[global]
 fn test_conditionals(value: i32) -> i32 {
     // Nested conditions
     if value > 100 {
@@ -56,6 +60,7 @@ fn test_conditionals(value: i32) -> i32 {
     }
 }
 
+#[global]
 fn test_loops() -> i32 {
     // Counting loop
     i := 0;
@@ -69,6 +74,7 @@ fn test_loops() -> i32 {
     return sum;  // Should be 45 (0+1+2+...+9)
 }
 
+#[global]
 fn factorial(n: i32) -> i32 {
     if n <= 1 {
         return 1;
@@ -85,7 +91,8 @@ fn factorial(n: i32) -> i32 {
     return result;
 }
 
-// ===== POINTER OPERATIONS =====
+// ===== POINTER OPERATIONS ======
+#[global]
 fn test_safe_pointers() -> i32 {
     // Safe pointer operations
     value := 42;
@@ -95,6 +102,7 @@ fn test_safe_pointers() -> i32 {
     return retrieved;
 }
 
+#[global]
 fn test_unsafe_pointers() -> i32 {
     x := 10;
     y := 20;
@@ -114,6 +122,7 @@ fn test_unsafe_pointers() -> i32 {
 }
 
 // ===== MEMORY OPERATIONS =====
+#[global]
 fn kernel_memory_test() -> i32 {
     // Simulate kernel memory operations
     page_size := 4096;
@@ -134,6 +143,7 @@ fn kernel_memory_test() -> i32 {
 }
 
 // ===== HEX LITERALS DEMO =====
+#[global]
 fn test_hex_values() -> i32 {
     // Test various hex literal formats
     magic_number := 0xDEADBEEF;  // Large hex value
@@ -143,15 +153,16 @@ fn test_hex_values() -> i32 {
 }
 
 // ===== INLINE ASSEMBLY DEMO =====
+#[global]
 fn get_timestamp() -> i32 {
     // Use inline assembly to get CPU timestamp
     result := 0;
     
     unsafe {
         asm {
-            mov rax, 12345
-            mov rbx, rax
-            rdtsc
+            mov rax, 12345!
+            mov rbx, rax!
+            rdtsc!
         }
         // Store a placeholder value since we can't capture asm result yet
         result = 12345;
@@ -160,18 +171,20 @@ fn get_timestamp() -> i32 {
     return result; // Returns placeholder timestamp
 }
 
+#[global]
 fn nop_instruction() -> i32 {
     // Demonstrate simple inline assembly
     asm {
-        nop
-        nop
-        nop
+        nop!
+        nop!
+        nop!
     }
-    
+
     return 1; // Success
 }
 
 // ===== COMPARISON OPERATIONS =====
+#[global]
 fn test_comparisons(a: i32, b: i32) -> i32 {
     result := 0;
     
@@ -203,6 +216,7 @@ fn test_comparisons(a: i32, b: i32) -> i32 {
 }
 
 // ===== MAIN FUNCTION - FEATURE SHOWCASE =====
+#[global]
 fn main() -> i32 {
     // Test basic arithmetic
     arith_result := test_arithmetic();

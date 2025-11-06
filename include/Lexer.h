@@ -45,6 +45,9 @@ enum class TokenType {
     RParen,
     LBrace,
     RBrace,
+    LBracket,
+    RBracket,
+    Hash,
 
     // Keywords
     Function,

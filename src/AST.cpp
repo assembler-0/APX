@@ -1,6 +1,23 @@
 #include "AST.h"
 #include <sstream>
 
+std::string Attribute::ToString() const {
+    std::stringstream ss;
+    ss << "#[" << name;
+    if (!arguments.empty()) {
+        ss << "(";
+        for (size_t i = 0; i < arguments.size(); ++i) {
+            ss << arguments[i];
+            if (i < arguments.size() - 1) {
+                ss << ", ";
+            }
+        }
+        ss << ")";
+    }
+    ss << "]";
+    return ss.str();
+}
+
 std::string Program::ToString() const {
     std::stringstream ss;
     for (const auto& stmt : statements) {

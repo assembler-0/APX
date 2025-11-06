@@ -5,11 +5,23 @@
 #include <vector>
 #include <memory>
 
+// Forward declaration
+class Attribute;
+
 // Base class for all nodes in the AST
 class Node {
 public:
     virtual ~Node() = default;
     virtual std::string ToString() const = 0;
+    std::vector<std::unique_ptr<Attribute>> attributes;
+};
+
+// Represents an attribute like #[align(16)] or #[global]
+class Attribute : public Node {
+public:
+    std::string name;
+    std::vector<std::string> arguments;
+    std::string ToString() const override;
 };
 
 // Base class for all expressions
@@ -53,6 +65,8 @@ public:
     std::unique_ptr<Identifier> type; // Optional type annotation
     std::unique_ptr<Expression> value;
     bool isConst = false;
+    bool isGlobal = false; // Set by #[global] attribute
+    int alignment = 0; // Set by #[align(x)] attribute
     std::string ToString() const override;
 };
 

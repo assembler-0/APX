@@ -36,6 +36,9 @@ std::string TokenTypeToString(const TokenType type) {
         case TokenType::RParen: return "RParen";
         case TokenType::LBrace: return "LBrace";
         case TokenType::RBrace: return "RBrace";
+        case TokenType::LBracket: return "LBracket";
+        case TokenType::RBracket: return "RBracket";
+        case TokenType::Hash: return "Hash";
         case TokenType::Function: return "Function";
         case TokenType::If: return "If";
         case TokenType::Else: return "Else";
@@ -208,6 +211,9 @@ Token Lexer::NextToken() {
     case ')': tok = {TokenType::RParen, ")"}; break;
     case '{': tok = {TokenType::LBrace, "{"}; break;
     case '}': tok = {TokenType::RBrace, "}"}; break;
+    case '[': tok = {TokenType::LBracket, "["}; break;
+    case ']': tok = {TokenType::RBracket, "]"}; break;
+    case '#': tok = {TokenType::Hash, "#"}; break;
     case '&': tok = {TokenType::Ampersand, "&"}; break;
     case ',': tok = {TokenType::Comma, ","}; break;
     case ';': tok = {TokenType::Semicolon, ";"}; break;

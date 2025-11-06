@@ -14,7 +14,12 @@ std::string CodeGenerator::Generate(const Program& program, const APXC_OPERATION
     // Generate global variables in data section
     for (const auto& stmt : program.statements) {
         if (const auto* varDecl = dynamic_cast<const VariableDeclaration*>(stmt.get())) {
-            if (varDecl->isConst || !dynamic_cast<const FunctionDeclaration*>(stmt.get())) {
+            if (varDecl->isConst || varDecl->isGlobal || !dynamic_cast<const FunctionDeclaration*>(stmt.get())) {
+                // Handle alignment attribute
+                if (varDecl->alignment > 0) {
+                    output << "    align " << varDecl->alignment << std::endl;
+                }
+                
                 output << "    " << varDecl->name->value << ": ";
                 if (varDecl->type && varDecl->type->value == "f32") {
                     output << "dd ";
@@ -42,6 +47,23 @@ std::string CodeGenerator::Generate(const Program& program, const APXC_OPERATION
     if (operation == APXC_OPERATION::APXC_COMPILE_W_ENTRY) {
         output << "global _start" << std::endl;
     }
+    
+    // Export global symbols
+    for (const auto& stmt : program.statements) {
+        if (const auto* varDecl = dynamic_cast<const VariableDeclaration*>(stmt.get())) {
+            if (varDecl->isGlobal) {
+                output << "global " << varDecl->name->value << std::endl;
+            }
+        } else if (const auto* funcDecl = dynamic_cast<const FunctionDeclaration*>(stmt.get())) {
+            for (const auto& attr : funcDecl->attributes) {
+                if (attr->name == "global") {
+                    output << "global " << funcDecl->name->value << std::endl;
+                    break;
+                }
+            }
+        }
+    }
+    
     output << std::endl;
 
     // First pass: Register global variables and populate functions map

@@ -39,6 +39,8 @@ private:
     std::unique_ptr<CallExpression> ParseCallExpression(std::unique_ptr<Expression> function);
     std::unique_ptr<Expression> ParsePrefixExpression();
     std::unique_ptr<Expression> ParseExpression(int precedence);
+    std::vector<std::unique_ptr<Attribute>> ParseAttributes();
+    std::unique_ptr<Attribute> ParseAttribute();
     
     // Legacy alias
     std::unique_ptr<LetStatement> ParseLetStatement() { return ParseVariableDeclaration(); }

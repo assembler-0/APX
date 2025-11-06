@@ -17,7 +17,7 @@ int main(int argc, char **argv) {
         showHelp,
         hasError,
         errorMessage
-        ] = arg_parser.Parse();
+    ] = arg_parser.Parse();
 
     if (showHelp) {
         ArgParser::PrintUsage(argv[0]);
