@@ -19,7 +19,12 @@ CompileConfiguration ArgParser::Parse() const {
         if (arg == "-h" || arg == "--help") {
             config.showHelp = true;
             return config;
-        } else if (arg == "-E") {
+        }
+        if (arg == "-v" || arg == "--version") {
+            config.showVersion = true;
+            return config;
+        }
+        if (arg == "-E") {
             if (config.operation != APXC_OPERATION::APXC_UNKNOWN) {
                 config.hasError = true;
                 config.errorMessage = "Multiple operation flags specified";
@@ -59,7 +64,7 @@ CompileConfiguration ArgParser::Parse() const {
         }
     }
     
-    if (config.inputFile.empty() && !config.showHelp) {
+    if (config.inputFile.empty()) {
         config.hasError = true;
         config.errorMessage = "No input file specified";
         return config;
@@ -79,4 +84,5 @@ void ArgParser::PrintUsage(const std::string& programName) {
     std::cout << "  -c              Compile without entry point\n";
     std::cout << "  -o <file>       Specify output file\n";
     std::cout << "  -h, --help      Show this help message\n\n";
+    std::cout << "  -v, --version   Show apxc version\n\n";
 }

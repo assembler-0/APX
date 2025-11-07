@@ -82,7 +82,7 @@ fn factorial(n: i32) -> i32 {
     
     result := 1;
     i := 2;
-    
+
     while i <= n {
         result = result * i;
         i = i + 1;

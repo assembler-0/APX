@@ -9,6 +9,7 @@ struct CompileConfiguration {
     std::string outputFile;
     bool showHelp = false;
     bool hasError = false;
+    bool showVersion = false;
     std::string errorMessage;
 };
 

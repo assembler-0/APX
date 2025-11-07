@@ -240,11 +240,9 @@ Token Lexer::NextToken() {
         if (isdigit(ch) || (ch == '0' && (input[readPosition] == 'x' || input[readPosition] == 'X'))) {
             std::string num;
             bool is_float = false;
-            bool is_hex = false;
             
             // Check for hex prefix
             if (ch == '0' && (input[readPosition] == 'x' || input[readPosition] == 'X')) {
-                is_hex = true;
                 num += ch; // '0'
                 NextChar();
                 num += ch; // 'x' or 'X'

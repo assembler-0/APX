@@ -6,6 +6,7 @@
 #include "CodeGenerator.h"
 #include "ArgParser.h"
 #include "Logger.h"
+#include "Version.h"
 
 std::mutex g_output_mutex;
 
@@ -16,11 +17,17 @@ int main(int argc, char **argv) {
         outputFile,
         showHelp,
         hasError,
+        showVersion,
         errorMessage
     ] = arg_parser.Parse();
 
     if (showHelp) {
         ArgParser::PrintUsage(argv[0]);
+        return 0;
+    }
+
+    if (showVersion) {
+        out::info(APXC_VERSION);
         return 0;
     }
 

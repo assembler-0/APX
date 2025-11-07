@@ -1,0 +1,7 @@
+#pragma once
+
+#define APXC_VERSION "0.0.1-rc1"
+#define APXC_VERSION_MAJOR 0
+#define APXC_VERSION_MINOR 0
+#define APXC_VERSION_PATCH 1
+#define APXC_VERSION_PRERELEASE "rc1"
